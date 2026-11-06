@@ -22,7 +22,7 @@
       <div ref="languagePicker" class="language-picker" :class="{ 'is-open': languageMenuOpen }" @focusout="onLanguagePickerBlur">
         <button ref="languageMenuButton" type="button" class="language-menu-toggle topbar-button icon-button" :aria-label="t('language.change')" :title="t('language.change')" aria-controls="language-options" :aria-expanded="languageMenuOpen" @click="toggleLanguageMenu"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18-5-5-5-13 0-18Z"/></svg></button>
         <div id="language-options" class="language-switch" role="group" :aria-label="t('language.change')">
-          <button v-for="option in languages" :key="option.code" type="button" :lang="option.code" :aria-label="option.name" :aria-pressed="language === option.code" :data-language="option.code" @click="setLanguage(option.code)"><span class="language-short">{{ option.short }}</span><span class="language-name" dir="auto">{{ option.name }}</span></button>
+          <button v-for="option in languages" :key="option.code" type="button" :lang="option.code" :aria-label="option.name" :aria-pressed="language === option.code" :data-language="option.code" @click="setLanguage(option.code)"><span class="language-name" dir="auto">{{ option.name }}</span></button>
         </div>
       </div>
     </header>

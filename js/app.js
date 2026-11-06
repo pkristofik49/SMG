@@ -36,7 +36,7 @@
       const languages = translations.languages;
       const language = ref('cs');
       const languageMenuOpen = ref(false), languagePicker = ref(null), languageMenuButton = ref(null);
-      const mobileLanguageQuery = window.matchMedia('(max-width: 680px)');
+      const narrowViewportQuery = window.matchMedia('(max-width: 680px)');
       function closeLanguageMenu(restoreFocus = false) {
         languageMenuOpen.value = false;
         if (restoreFocus) nextTick(() => languageMenuButton.value?.focus({ preventScroll: true }));
@@ -57,7 +57,6 @@
       function onLanguagePickerBlur(event) {
         if (!event.currentTarget.contains(event.relatedTarget)) closeLanguageMenu();
       }
-      function onLanguageViewportChange() { if (!mobileLanguageQuery.matches) closeLanguageMenu(); }
       try {
         const savedLanguage = readStored(LANGUAGE_KEY, translations.legacyStorageKeys.language);
         if (languages.some(option => option.code === savedLanguage)) language.value = savedLanguage;
@@ -133,7 +132,7 @@
       function animateGuidePanel(element, done, entering) {
         cancelGuidePanelAnimation();
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) { done(); return; }
-        const offset = mobileLanguageQuery.matches ? 'translateY(12px)' : `translateX(${getComputedStyle(element).direction === 'rtl' ? -18 : 18}px)`;
+        const offset = narrowViewportQuery.matches ? 'translateY(12px)' : `translateX(${getComputedStyle(element).direction === 'rtl' ? -18 : 18}px)`;
         const hidden = { opacity: 0, transform: offset }, shown = { opacity: 1, transform: 'translate(0, 0)' };
         guidePanelAnimation = element.animate(entering ? [hidden, shown] : [shown, hidden], {
           duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both'
@@ -558,7 +557,6 @@
         document.addEventListener('pointerdown', onLanguageOutside);
         document.addEventListener('keydown', onLanguageMenuKey);
         document.addEventListener('scroll', updateGuidePosition, { passive: true });
-        mobileLanguageQuery.addEventListener('change', onLanguageViewportChange);
         document.addEventListener('visibilitychange', onVisibilityChange);
         navigate();
         clockInterval = setInterval(syncSpeedyTime, 25);
@@ -596,7 +594,6 @@
         document.removeEventListener('pointerdown', onLanguageOutside);
         document.removeEventListener('keydown', onLanguageMenuKey);
         document.removeEventListener('scroll', updateGuidePosition);
-        mobileLanguageQuery.removeEventListener('change', onLanguageViewportChange);
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
