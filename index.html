@@ -63,13 +63,14 @@
                 <div class="speedy-preview-stack"><span class="speed-line line-one"></span><span class="speed-line line-two"></span><span class="speed-line line-three"></span><span class="speedy-sample sample-back">{{ formatTile(2) }}</span><span class="speedy-sample sample-front">{{ formatTile(2048) }}</span><span class="speedy-sample sample-small">{{ formatTile(4) }}</span><svg class="speedy-bolt" viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="m14 2-10 12h7l-1 8 10-12h-7Z"/></svg></div>
                 <div class="speedy-preview-track"><span></span></div>
               </div>
+              <div v-else-if="game.id === 'extended'" class="mini-board mini-board-extended"><span v-for="cell in 25" :key="cell" :class="`mini-${2 ** ((cell - 1) % 11 + 1)}`">{{ formatTile(2 ** ((cell - 1) % 11 + 1)) }}</span></div>
               <div v-else class="mini-board"><span class="mini-2"> {{ formatTile(2) }}</span><span class="mini-4"> {{ formatTile(4) }}</span><span class="mini-8"> {{ formatTile(8) }}</span><span class="mini-16"> {{ formatTile(16) }}</span><span class="mini-32"> {{ formatTile(32) }}</span><span class="mini-64"> {{ formatTile(64) }}</span><span class="mini-128"> {{ formatTile(128) }}</span><span class="mini-256"> {{ formatTile(256) }}</span><span class="mini-2048"> {{ formatTile(2048) }}</span></div>
               <span class="art-caption">{{ t(game.id === 'speedy' ? 'speedy.timer' : 'card.caption') }}</span>
             </div>
             <div class="card-content">
               <div class="card-labels"><span class="tag">{{ t('card.category') }}</span><span class="time-label">{{ t('card.duration') }}</span></div>
               <h3><span>{{ formatTile(2048) }}<small class="card-variant">{{ t(`game.variant.${game.id}`) }}</small></span><span class="card-arrow" aria-hidden="true">↗</span></h3>
-              <p>{{ t(game.id === 'speedy' ? 'speedy.rules' : 'card.description') }}<br>{{ t('card.goal') }}</p>
+              <p>{{ t(game.id === 'speedy' ? 'speedy.rules' : game.id === 'extended' ? 'extended.rules' : 'card.description') }}<br>{{ t('card.goal') }}</p>
               <dl class="card-scores">
                 <div><dt>{{ t('card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
                 <div><dt>{{ t('card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
@@ -77,7 +78,7 @@
               <span class="card-play">{{ t(gameStates[game.id]?.moves > 0 ? 'card.continue' : 'card.play') }} <span aria-hidden="true">→</span></span>
             </div>
           </a>
-          <article v-for="slot in 2" :key="`coming-${slot}`" class="coming-card">
+          <article v-for="slot in (4 - games.length)" :key="`coming-${slot}`" class="coming-card">
             <span class="coming-icon" aria-hidden="true">✳</span>
             <span class="tag">{{ t('coming.label') }}</span>
             <h3>{{ t('coming.title') }}<br>{{ t('coming.subtitle') }}</h3>
@@ -89,7 +90,7 @@
       <div class="menu-benefits"><span><b aria-hidden="true">↔</b> {{ t('benefits.devices') }}</span><span><b aria-hidden="true">◎</b> {{ t('benefits.account') }}</span><span><b aria-hidden="true">↳</b> {{ t('benefits.pace') }}</span></div>
     </main>
 
-    <main v-else ref="playPage" class="play-page" :style="{ '--guide-top': `${guidePanelTop}px`, ...(expanded ? { '--expanded-board-size': `${expandedBoardSize}px` } : {}) }">
+    <main v-else ref="playPage" class="play-page" :class="{ 'extended-game': boardSize === 5 }" :style="{ '--board-size': boardSize, '--guide-top': `${guidePanelTop}px`, ...(expanded ? { '--expanded-board-size': `${expandedBoardSize}px` } : {}) }">
       <div class="play-topbar">
         <a class="back-link topbar-button icon-button" href="#/" :aria-label="t('game.back')" :title="t('game.back')"><svg class="back-arrow" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5m7-7-7 7 7 7"/></svg></a>
         <div class="topbar-actions">
@@ -111,7 +112,7 @@
           </div>
           <div class="board-wrap">
             <div ref="boardElement" class="board" :class="{ 'board-animating': animating }" role="group" tabindex="0" :aria-label="t('game.board')" @keydown="onBoardKey" @pointerdown="onPointerDown" @pointerup="onPointerUp" @pointercancel="pointerStart = null" @lostpointercapture="pointerStart = null">
-              <div v-for="(value, index) in board" :key="index" class="tile" :class="[tileClass(value), { 'tile-new': index === spawned, 'tile-merged': merged.includes(index) }]" :aria-label="t('game.cell', { row: formatTile(Math.floor(index / 4) + 1), column: formatTile(index % 4 + 1), value: value ? format(value) : t('game.empty') })"><span :key="`${index}-${value}`">{{ value ? formatTile(value) : '' }}</span></div>
+              <div v-for="(value, index) in board" :key="index" class="tile" :class="[tileClass(value), { 'tile-new': index === spawned, 'tile-merged': merged.includes(index) }]" :aria-label="t('game.cell', { row: formatTile(Math.floor(index / boardSize) + 1), column: formatTile(index % boardSize + 1), value: value ? format(value) : t('game.empty') })"><span :key="`${index}-${value}`">{{ value ? formatTile(value) : '' }}</span></div>
             </div>
             <div v-if="animating" ref="motionLayer" class="tile-motion-layer" aria-hidden="true">
               <div v-for="tile in motionTiles" :key="tile.from" class="tile moving-tile" :class="tileClass(tile.value)" :style="tile.style"><span>{{ formatTile(tile.value) }}</span></div>

@@ -10,8 +10,9 @@
   const VIEWS_KEY = 'little-arcade.views';
   const SOUND_KEY = 'little-arcade.sound';
   const GAMES = [
-    { id: 'classic', hash: '#/2048', saveKey: SAVE_KEY, bestKey: BEST_KEY },
-    { id: 'speedy', hash: '#/2048-speedy', saveKey: 'little-arcade.2048-speedy.v1', bestKey: 'little-arcade.2048-speedy.best' }
+    { id: 'classic', size: 4, hash: '#/2048', saveKey: SAVE_KEY, bestKey: BEST_KEY },
+    { id: 'speedy', size: 4, hash: '#/2048-speedy', saveKey: 'little-arcade.2048-speedy.v1', bestKey: 'little-arcade.2048-speedy.best' },
+    { id: 'extended', size: 5, hash: '#/2048-extended', saveKey: 'little-arcade.2048-extended.v1', bestKey: 'little-arcade.2048-extended.best' }
   ];
   const routeGame = () => GAMES.find(game => game.hash === location.hash);
   const translations = ArcadeTranslations;
@@ -42,6 +43,7 @@
       const activeGame = ref(routeGame()?.id || 'classic');
       const currentGame = computed(() => games.find(game => game.id === activeGame.value));
       const isSpeedy = computed(() => activeGame.value === 'speedy');
+      const boardSize = computed(() => currentGame.value.size);
       const speedyClock = createSpeedyClock();
       const remainingMs = ref(2000), timeBudgetMs = ref(2000);
       const timerStarted = ref(false);
@@ -190,7 +192,7 @@
         }) : t('meta.menuTitle');
         document.querySelector('meta[name="description"]').content = t('meta.description');
       }, { immediate: true });
-      const board = ref(Array(16).fill(0));
+      const board = ref(Array(boardSize.value * boardSize.value).fill(0));
       const guideVisible = ref(true);
       const expanded = ref(false), expandedBoardSize = ref(500), playPage = ref(null);
       const guidePanelTop = ref(76);
@@ -403,8 +405,8 @@
           speedyClock.start(); syncSpeedyTime();
         }
       }
-      function validState(state) {
-        return state && rules.validBoard(state.board) && state.board.filter(Boolean).length >= 2 &&
+      function validState(state, size = boardSize.value) {
+        return state && rules.validBoard(state.board, size) && state.board.filter(Boolean).length >= 2 &&
           Number.isSafeInteger(state.score) && state.score >= 0 && Number.isSafeInteger(state.moves) && state.moves >= 0 &&
           typeof state.won === 'boolean' && typeof state.continued === 'boolean' &&
           state.won === state.board.some(value => value >= 2048) && (!state.continued || state.won);
@@ -498,7 +500,7 @@
         stopAnimation();
         speedyClock.reset(); remainingMs.value = 2000; timeBudgetMs.value = 2000;
         timerStarted.value = false;
-        board.value = rules.spawn(rules.spawn(Array(16).fill(0)).board).board;
+        board.value = rules.spawn(rules.spawn(Array(boardSize.value * boardSize.value).fill(0)).board).board;
         score.value = 0; moves.value = 0; won.value = false; continued.value = false;
         previous.value = null; overlay.value = null; spawned.value = -1;
         announcement.value = t('announcement.new');
@@ -671,8 +673,8 @@
             if (Number.isSafeInteger(storedBest) && storedBest >= 0) record = storedBest;
             saved = JSON.parse(game.id === 'classic' ? readStored(game.saveKey, translations.legacyStorageKeys.save) : localStorage.getItem(game.saveKey));
           } catch { storageAvailable.value = false; }
-          gameStates.value[game.id] = validState(saved)
-            ? { ...saved, best: Math.max(record, saved.score), previous: validState(saved.previous) ? saved.previous : null }
+          gameStates.value[game.id] = validState(saved, game.size)
+            ? { ...saved, best: Math.max(record, saved.score), previous: validState(saved.previous, game.size) ? saved.previous : null }
             : { best: record, previous: null, score: 0, moves: 0 };
         }
         activateGame(activeGame.value);
@@ -731,7 +733,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { boardSize, appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

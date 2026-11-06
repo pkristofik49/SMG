@@ -1,7 +1,6 @@
 /* Pure game rules; no UI, storage or framework dependency. */
 (function (root) {
   'use strict';
-  const SIZE = 4;
   function collapse(line) {
     const values = line.flatMap((value, from) => value ? [{ value, from }] : []);
     const result = [];
@@ -22,7 +21,7 @@
         movements.push({ ...values[i], to });
       }
     }
-    while (result.length < SIZE) result.push(0);
+    while (result.length < line.length) result.push(0);
     return { line: result, points, movements, merges };
   }
   function slide(line) {
@@ -30,6 +29,7 @@
     return { line: result, points };
   }
   function move(board, direction) {
+    const SIZE = Math.sqrt(board.length);
     if (!['left', 'right', 'up', 'down'].includes(direction)) throw new Error('Unknown direction');
     const next = board.slice();
     const movements = [], merges = [];
@@ -60,12 +60,13 @@
     return { board: next, index };
   }
   function canMove(board) {
+    const SIZE = Math.sqrt(board.length);
     return board.some((value, index) => value === 0 ||
       (index % SIZE < SIZE - 1 && value === board[index + 1]) ||
       (index < SIZE * (SIZE - 1) && value === board[index + SIZE]));
   }
-  function validBoard(board) {
-    return Array.isArray(board) && board.length === 16 && board.every(value =>
+  function validBoard(board, size = 4) {
+    return Array.isArray(board) && board.length === size * size && board.every(value =>
       Number.isSafeInteger(value) && (value === 0 || (value >= 2 && Number.isInteger(Math.log2(value)))));
   }
   root.Game2048 = Object.freeze({ slide, move, spawn, canMove, validBoard });

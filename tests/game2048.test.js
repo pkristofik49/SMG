@@ -11,6 +11,25 @@
     catch (error) { failures++; results.push(`FAIL ${name}: ${error.message}`); }
   }
   const empty = () => Array(16).fill(0);
+  test('Five cells merge without shortening the line', () => equal(rules.slide([2, 2, 4, 4, 8]), { line: [4, 8, 8, 0, 0], points: 12 }));
+  test('Extended moves and merges correctly in all four directions', () => {
+    for (const direction of ['left', 'right', 'up', 'down']) {
+      const board = Array(25).fill(0);
+      const vertical = direction === 'up' || direction === 'down';
+      board[0] = 2; board[vertical ? 5 : 1] = 2;
+      const result = rules.move(board, direction);
+      const destination = direction === 'right' ? 4 : direction === 'down' ? 20 : 0;
+      equal(result.board.length, 25); equal(result.board[destination], 4); equal(result.points, 4);
+      equal(result.merges, [destination]); equal(result.movements.map(tile => tile.to), [destination, destination]);
+    }
+  });
+  test('Extended validation rejects four by four saves', () => { equal(rules.validBoard(Array(25).fill(0), 5), true); equal(rules.validBoard(Array(16).fill(0), 5), false); equal(rules.validBoard(Array(25).fill(0)), false); });
+  test('Extended game-over detection respects five-column row boundaries', () => {
+    const board = Array.from({ length: 25 }, (_, index) => 2 ** (index + 1));
+    equal(rules.canMove(board), false);
+    board[5] = board[4]; equal(rules.canMove(board), false);
+    board[24] = board[23]; equal(rules.canMove(board), true);
+  });
   test('Four twos merge into two fours', () => equal(rules.slide([2, 2, 2, 2]), { line: [4, 4, 0, 0], points: 8 }));
   test('A newly merged tile cannot merge again in the same move', () => equal(rules.slide([2, 2, 4, 0]), { line: [4, 4, 0, 0], points: 4 }));
   test('Empty cells do not prevent merging', () => equal(rules.slide([2, 0, 2, 4]), { line: [4, 4, 0, 0], points: 4 }));

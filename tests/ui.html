@@ -15,7 +15,7 @@
   }
   frame.addEventListener('load', async () => {
     const win = frame.contentWindow;
-    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound'];
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound', 'little-arcade.2048-extended.v1', 'little-arcade.2048-extended.best'];
     const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
     const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
     let originals;
@@ -357,7 +357,7 @@
       win.localStorage.setItem(speedyKeys[0], speedyGame);
       win.localStorage.setItem(speedyKeys[1], '512');
       await reload(); doc = frame.contentDocument;
-      check('Menu offers classic and speedy with independent scores', doc.querySelectorAll('.game-card').length === 2 && doc.querySelector('[data-game="classic"] h3').textContent.includes('classic') && doc.querySelector('[data-game="speedy"] h3').textContent.includes('speedy') && doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '512');
+      check('Menu offers classic and speedy with independent scores', doc.querySelectorAll('.game-card').length === 3 && doc.querySelector('[data-game="classic"] h3').textContent.includes('classic') && doc.querySelector('[data-game="speedy"] h3').textContent.includes('speedy') && doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '512');
       doc.querySelector('[data-game="speedy"]').click(); await pause();
       check('Speedy loads its own game, title and record', win.location.hash === '#/2048-speedy' && doc.querySelector('.game-variant').textContent === 'speedy' && doc.title.includes('2048 speedy') && doc.querySelector('.scores strong').textContent === '512');
       doc.querySelector('.direction-pad button').click(); await pause(220);
@@ -832,6 +832,43 @@
         doc.querySelector('.undo-button').click(); await pause();
         doc.querySelector('.back-link').click(); await pause();
       }
+      const classicBeforeExtended = JSON.parse(win.localStorage.getItem(keys[0]));
+      const speedyBeforeExtended = JSON.parse(win.localStorage.getItem(speedyKeys[0]));
+      check('Menu offers Extended as the third game and retains four equal cards', doc.querySelectorAll('.game-card').length === 3 && doc.querySelectorAll('.coming-card').length === 1 && doc.querySelector('[data-game="extended"] .mini-board').children.length === 25);
+      win.location.hash = '#/2048-extended'; await pause();
+      win.localStorage.setItem(keys[6], JSON.stringify({ ...seeded, board: [2, 2, ...Array(23).fill(0)] }));
+      await reload(); doc = frame.contentDocument;
+      check('Extended opens directly with 25 cells and no time limit', doc.querySelectorAll('.board>.tile').length === 25 && doc.querySelector('.game-variant').textContent === 'extended' && !doc.querySelector('.speedy-time'));
+      const extendedCells = Array.from(doc.querySelector('.board').children);
+      check('Extended accessible coordinates reach row five and column five', extendedCells[24].getAttribute('aria-label') === win.ArcadeTranslations[doc.documentElement.lang]['game.cell'].replace('{row}', new Intl.NumberFormat(win.ArcadeTranslations.languages.find(item => item.code === doc.documentElement.lang).locale, { useGrouping: false }).format(5)).replace('{column}', new Intl.NumberFormat(win.ArcadeTranslations.languages.find(item => item.code === doc.documentElement.lang).locale, { useGrouping: false }).format(5)).replace('{value}', win.ArcadeTranslations[doc.documentElement.lang]['game.empty']));
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause(); win.dispatchEvent(new win.Event('resize')); await pause();
+        const cells = Array.from(doc.querySelector('.board').children, tile => tile.getBoundingClientRect());
+        check(`Extended has five columns and five rows without overflow at ${width}px`, Math.abs(cells[0].top - cells[4].top) < 1 && cells[5].top > cells[0].top && cells[24].top > cells[19].top && Math.abs(cells[20].left - cells[0].left) < 1 && doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      doc.querySelector('.direction-pad button').click(); await pause(40);
+      check('Extended animates moving tiles on its larger board', doc.querySelectorAll('.moving-tile').length === 2);
+      await pause(180);
+      check('Extended merges, scores and spawns using 25-cell saves', JSON.parse(win.localStorage.getItem(keys[6])).board.length === 25 && JSON.parse(win.localStorage.getItem(keys[6])).score === 4 && JSON.parse(win.localStorage.getItem(keys[6])).moves === 1);
+      doc.querySelector('.undo-button').click(); await pause();
+      check('Extended undo restores the full previous board', JSON.stringify(JSON.parse(win.localStorage.getItem(keys[6])).board) === JSON.stringify([2, 2, ...Array(23).fill(0)]) && Number(win.localStorage.getItem(keys[7])) >= 4);
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      await reload(); doc = frame.contentDocument;
+      check('Extended restores its game and undo after reload', doc.querySelectorAll('.tile').length === 25 && JSON.parse(win.localStorage.getItem(keys[6])).score === 4 && !doc.querySelector('.undo-button').disabled);
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
+      frame.style.width = '320px'; frame.style.height = '568px'; await pause(); win.dispatchEvent(new win.Event('resize')); await pause(360);
+      const extendedBounds = doc.querySelector('.board').getBoundingClientRect();
+      check('Extended fits a square 5 by 5 board in mobile fullscreen', Math.abs(extendedBounds.width - extendedBounds.height) < 1 && extendedBounds.left >= 0 && extendedBounds.right <= win.innerWidth + 1 && doc.querySelector('.direction-pad').getBoundingClientRect().bottom <= win.innerHeight + 1);
+      doc.querySelector('.back-link').click(); await pause();
+      check('Extended menu shows its own score and record', doc.querySelector('[data-game="extended"] dd').textContent === new Intl.NumberFormat(win.ArcadeTranslations.languages.find(item => item.code === doc.documentElement.lang).locale).format(4));
+      check('Extended does not change Classic or Speedy boards and scores', JSON.stringify(JSON.parse(win.localStorage.getItem(keys[0])).board) === JSON.stringify(classicBeforeExtended.board) && JSON.parse(win.localStorage.getItem(keys[0])).score === classicBeforeExtended.score && JSON.stringify(JSON.parse(win.localStorage.getItem(speedyKeys[0])).board) === JSON.stringify(speedyBeforeExtended.board) && JSON.parse(win.localStorage.getItem(speedyKeys[0])).score === speedyBeforeExtended.score);
+      win.localStorage.setItem(keys[6], JSON.stringify({ ...seeded, board: Array.from({ length: 25 }, (_, index) => 2 ** (index + 1)), won: true, continued: true }));
+      win.location.hash = '#/2048-extended'; await pause(); await reload(); doc = frame.contentDocument;
+      check('Extended detects game over on a full five-column board', doc.querySelector('[role="dialog"] h2')?.textContent === win.ArcadeTranslations[doc.documentElement.lang]['dialog.over.title']);
+      win.localStorage.setItem(keys[6], JSON.stringify({ ...seeded, board: [1024, 1024, ...Array(23).fill(0)] }));
+      await reload(); doc = frame.contentDocument;
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      check('Extended offers the Classic win dialog at 2048', doc.querySelector('[role="dialog"] h2')?.textContent === win.ArcadeTranslations[doc.documentElement.lang]['dialog.won.title']);
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

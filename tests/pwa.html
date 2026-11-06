@@ -17,7 +17,11 @@
     const prefix = `little-arcade:${root.href}:`;
     const frame = document.getElementById('app');
     const control = action => fetch(`/__pwa-test__/${action}`, { cache: 'no-store' });
-    const loadApp = path => new Promise(resolve => { frame.addEventListener('load', resolve, { once: true }); frame.src = new URL(path, root).href; });
+    const loadApp = async path => {
+      const target = new URL(path, root).href;
+      if (frame.src.split('#')[0] === target.split('#')[0]) { frame.src = target; await pause(); return; }
+      await new Promise(resolve => { frame.addEventListener('load', resolve, { once: true }); frame.src = target; });
+    };
     let registration;
     try {
       await control('online'); await control('release?version=v1');
@@ -60,6 +64,17 @@
       check('Speedy starts offline with saved language and palette', frame.contentDocument.documentElement.lang === 'en' && frame.contentDocument.documentElement.dataset.palette === 'dark' && frame.contentDocument.querySelectorAll('.tile').length === 16);
       for (const resource of resources) check(`Cached resource remains available offline: ${new URL(resource.url).pathname}`, (await fetch(resource.url)).ok);
       check('Service worker leaves unrelated requests outside its cache', (await fetch('/outside-project')).status === 503);
+      await loadApp('./index.html#/2048-extended');
+      await until(() => frame.contentDocument.querySelectorAll('.board>.tile').length === 25);
+      check('Extended starts offline with a 5 by 5 board and no timer', frame.contentDocument.querySelector('.game-variant').textContent === 'extended' && !frame.contentDocument.querySelector('.speedy-time'));
+      const extendedSaveKey = 'little-arcade.2048-extended.v1';
+      const extendedBefore = JSON.parse(frame.contentWindow.localStorage.getItem(extendedSaveKey));
+      const extendedDirection = ['left', 'up', 'down', 'right'].findIndex(direction => frame.contentWindow.Game2048.move(extendedBefore.board, direction).changed);
+      frame.contentDocument.querySelectorAll('.direction-pad button')[extendedDirection].click();
+      await until(() => JSON.parse(frame.contentWindow.localStorage.getItem(extendedSaveKey)).moves === extendedBefore.moves + 1);
+      check('Extended saves valid 25-cell moves offline', JSON.parse(frame.contentWindow.localStorage.getItem(extendedSaveKey)).board.length === 25);
+      await loadApp('./index.html#/2048-speedy');
+      await until(() => frame.contentDocument.querySelector('.speedy-time'));
       await control('online'); await control('release?version=v2');
       await registration.update();
       await until(() => registration.waiting?.state === 'installed');
