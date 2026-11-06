@@ -657,6 +657,39 @@
         sendKey('Escape'); await pause();
         check('Reduced motion closes the language list immediately', win.getComputedStyle(languageList).display === 'none' && languageList.getAnimations().length === 0);
       } finally { win.matchMedia = languageMatchMedia; }
+      for (const route of ['#/', '#/2048', '#/2048-speedy']) {
+        win.location.hash = route; await pause(220);
+        if (route === '#/2048-speedy') {
+          doc.querySelector('.new-game-button').click(); await pause();
+          sendKey('n'); await pause(220);
+        }
+        const beforeLanguageKeys = [win.localStorage.getItem(keys[0]), JSON.parse(win.localStorage.getItem(speedyKeys[0])).board];
+        sendKey('L'); await pause(220);
+        const options = Array.from(languageList.querySelectorAll('[data-language]'));
+        const initial = options.indexOf(doc.activeElement);
+        const startingLanguage = doc.documentElement.lang;
+        check(`L opens the language list on ${route} with the current option focused`, globe.getAttribute('aria-expanded') === 'true' && initial >= 0 && options[initial].dataset.language === startingLanguage && globe.title.endsWith('(L)') && globe.getAttribute('aria-keyshortcuts') === 'L');
+        sendKey('l', { repeat: true }); await pause();
+        check(`Holding L does not close the list on ${route}`, globe.getAttribute('aria-expanded') === 'true');
+        const down = sendKey('ArrowDown'); await pause();
+        check(`Down focuses the next language without selecting it on ${route}`, down.defaultPrevented && doc.activeElement === options[(initial + 1) % options.length] && doc.documentElement.lang === startingLanguage);
+        sendKey('ArrowUp'); await pause();
+        for (let index = 0; index < options.length; index++) sendKey('ArrowUp');
+        await pause();
+        check(`Up navigates and wraps through all language options on ${route}`, doc.activeElement === options[initial] && doc.documentElement.lang === startingLanguage);
+        sendKey('ArrowDown'); await pause();
+        const chosenLanguage = doc.activeElement.dataset.language;
+        sendKey('Enter'); await pause(220);
+        check(`Enter confirms the focused language and closes the list on ${route}`, doc.documentElement.lang === chosenLanguage && win.localStorage.getItem(keys[2]) === chosenLanguage && globe.getAttribute('aria-expanded') === 'false' && doc.activeElement === globe);
+        check(`Language navigation does not move game tiles on ${route}`, win.localStorage.getItem(keys[0]) === beforeLanguageKeys[0] && JSON.stringify(JSON.parse(win.localStorage.getItem(speedyKeys[0])).board) === JSON.stringify(beforeLanguageKeys[1]));
+        sendKey('l'); await pause(); sendKey('ArrowDown'); await pause(); sendKey('l'); await pause(220);
+        check(`A second L cancels language selection on ${route}`, globe.getAttribute('aria-expanded') === 'false' && doc.documentElement.lang === chosenLanguage && doc.activeElement === globe);
+      }
+      const languageInput = doc.createElement('input'); doc.body.append(languageInput); languageInput.focus();
+      sendKey('l'); await pause();
+      check('Typing L in an input does not open the language list', globe.getAttribute('aria-expanded') === 'false');
+      languageInput.remove(); globe.focus(); sendKey('l', { ctrlKey: true }); await pause();
+      check('Modified L shortcuts are left to the browser', globe.getAttribute('aria-expanded') === 'false');
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

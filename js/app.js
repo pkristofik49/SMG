@@ -69,7 +69,21 @@
         if (languageMenuOpen.value && !languagePicker.value?.contains(event.target)) closeLanguageMenu();
       }
       function onLanguageMenuKey(event) {
-        if (languageMenuOpen.value && event.key === 'Escape') { event.preventDefault(); closeLanguageMenu(true); }
+        if (!languageMenuOpen.value || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+        const options = Array.from(languagePicker.value?.querySelectorAll('[data-language]') || []);
+        const current = options.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          const step = event.key === 'ArrowDown' ? 1 : -1;
+          const index = current < 0 ? (step > 0 ? 0 : options.length - 1) : (current + step + options.length) % options.length;
+          options[index]?.focus({ preventScroll: true });
+          options[index]?.scrollIntoView({ block: 'nearest' });
+        } else if (event.key === 'Enter' && current >= 0) {
+          event.preventDefault();
+          if (!event.repeat) options[current].click();
+        } else if (event.key === 'Escape') {
+          event.preventDefault(); closeLanguageMenu(true);
+        }
       }
       function onLanguagePickerBlur(event) {
         if (!event.currentTarget.contains(event.relatedTarget)) closeLanguageMenu();
@@ -469,7 +483,16 @@
         if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing || event.defaultPrevented) return;
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return;
+        onLanguageMenuKey(event);
+        if (event.defaultPrevented) return;
         const key = event.key.toLowerCase();
+        if (key === 'l') {
+          event.preventDefault();
+          if (!event.repeat) {
+            if (languageMenuOpen.value) closeLanguageMenu(true); else toggleLanguageMenu();
+          }
+          return;
+        }
         if (key === 'z') {
           event.preventDefault();
           if (!event.repeat && audioAvailable) toggleSound();
