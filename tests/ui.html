@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="cs"><head><meta charset="utf-8"><title>Testy rozhraní</title></head><body>
+<h1>Testy rozhraní</h1><pre id="results">RUNNING</pre>
+<iframe id="preview" title="Testovaná herna" style="width:1440px;height:1100px;border:0" src="../index.html"></iframe>
+<script>
+  'use strict';
+  const frame = document.getElementById('preview');
+  const lines = [];
+  const pause = (duration = 60) => new Promise(resolve => setTimeout(resolve, duration));
+  let failures = 0;
+  function check(name, condition) { lines.push(`${condition ? 'PASS' : 'FAIL'} ${name}`); if (!condition) failures++; }
+  async function reload() {
+    await new Promise(resolve => { frame.addEventListener('load', resolve, { once: true }); frame.contentWindow.location.reload(); });
+    await pause();
+  }
+  frame.addEventListener('load', async () => {
+    const win = frame.contentWindow;
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language'];
+    const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
+    const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
+    let originals;
+    let legacyOriginals;
+    let speedyOriginals;
+    const originalAudioContext = win.AudioContext;
+    try {
+      await pause();
+      originals = keys.map(key => win.localStorage.getItem(key));
+      legacyOriginals = legacyKeys.map(key => win.localStorage.getItem(key));
+      speedyOriginals = speedyKeys.map(key => win.localStorage.getItem(key));
+      let doc = frame.contentDocument;
+      doc.querySelector('[data-language="cs"]').click(); await pause();
+      check('Vue renders the menu', !!doc.querySelector('.game-card') && !doc.querySelector('[v-cloak]'));
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`Menu has no horizontal overflow at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      const seeded = { board: [2, 2, ...Array(14).fill(0)], score: 0, moves: 0, won: false, continued: false, previous: null };
+      win.localStorage.setItem(keys[0], JSON.stringify(seeded));
+      await reload(); doc = frame.contentDocument;
+      doc.querySelector('.game-card').click(); await pause();
+      check('Menu opens the game without page navigation', !!doc.querySelector('.board') && win.location.hash === '#/2048');
+      check('Game renders sixteen cells', doc.querySelectorAll('.tile').length === 16);
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`Game has no horizontal overflow at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      const board = doc.querySelector('.board');
+      board.focus(); board.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true }));
+      await pause();
+      let saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Keyboard merges once and records one move', saved.score === 4 && saved.moves === 1 && saved.board[0] === 4);
+      const reducedMotion = win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (!reducedMotion) {
+        const moving = Array.from(doc.querySelectorAll('.moving-tile'));
+        check('Both original tiles remain visible while merging', moving.length === 2 && moving.every(tile => tile.textContent.trim() === '2'));
+        const animation = moving[1]?.getAnimations()[0];
+        const frames = animation?.effect.getKeyframes();
+        check('Tile travels to the neighbouring cell', !!frames && frames[0].transform === 'translate(0px, 0px)' && /^translate\(-[\d.]+px, 0px\)$/.test(frames[1].transform));
+        check('Final values are hidden during movement', doc.querySelector('.board').classList.contains('board-animating') && win.getComputedStyle(doc.querySelector('.board .tile span')).visibility === 'hidden');
+      } else check('Reduced motion skips tile travel', !doc.querySelector('.tile-motion-layer'));
+      await pause(130);
+      check('Movement finishes with one merged tile and one new tile', !doc.querySelector('.tile-motion-layer') && doc.querySelectorAll('.tile-merged').length === 1 && doc.querySelectorAll('.tile-new').length === 1);
+      check('Merged tile shows the sum at its destination', doc.querySelector('.tile-merged')?.textContent.trim() === '4');
+      doc.querySelector('.undo-button').click(); await pause();
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Undo restores the complete previous board and score', saved.score === 0 && saved.moves === 0 && JSON.stringify(saved.board) === JSON.stringify(seeded.board));
+      check('Undo is available once', doc.querySelector('.undo-button').disabled);
+      doc.querySelector('.direction-pad button').click(); await pause();
+      check('Direction buttons work', JSON.parse(win.localStorage.getItem(keys[0])).moves === 1);
+      doc.querySelector('.new-game-button').click(); await pause();
+      check('Restart requires confirmation', !!doc.querySelector('[role="dialog"]') && doc.activeElement === doc.querySelector('.primary-button'));
+      await pause(200);
+      check('Finishing an interrupted animation cannot dismiss the restart dialog', !!doc.querySelector('[role="dialog"]') && !doc.querySelector('.tile-motion-layer'));
+      doc.querySelector('.board-overlay .text-button').click(); await pause();
+      check('Cancelling preserves the game', !doc.querySelector('[role="dialog"]') && JSON.parse(win.localStorage.getItem(keys[0])).moves === 1);
+      const beforeReload = JSON.stringify(JSON.parse(win.localStorage.getItem(keys[0])).board);
+      await reload(); doc = frame.contentDocument;
+      check('Reload restores the game', JSON.stringify(Array.from(doc.querySelectorAll('.tile')).map(tile => Number(tile.textContent.trim()))) === beforeReload);
+      const full = [2,4,2,4,4,2,4,2,2,4,2,4,4,2,4,2];
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, board: full, moves: 10 }));
+      await reload(); doc = frame.contentDocument;
+      check('Blocked game shows end dialog', doc.querySelector('[role="dialog"] h2')?.textContent.includes('není kam'));
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, board: [2048,2,...Array(14).fill(0)], won: true, moves: 100 }));
+      await reload(); doc = frame.contentDocument;
+      check('2048 shows win dialog', doc.querySelector('[role="dialog"] h2')?.textContent.includes('2048'));
+      doc.querySelector('.primary-button').click(); await pause();
+      check('Player can continue after winning', !doc.querySelector('[role="dialog"]') && JSON.parse(win.localStorage.getItem(keys[0])).continued);
+      win.localStorage.setItem(keys[0], JSON.stringify(seeded));
+      await reload(); doc = frame.contentDocument;
+      // Keep spawning deterministic while exercising the animation input queue.
+      win.Math.random = () => 0;
+      const buttons = doc.querySelectorAll('.direction-pad button');
+      buttons[0].click(); buttons[2].click();
+      await pause(400);
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      const expected = Array(16).fill(0); expected[0] = 2; expected[12] = 4; expected[13] = 2;
+      check('Rapid inputs execute in order after the slide finishes', saved.moves === 2 && JSON.stringify(saved.board) === JSON.stringify(expected) && !doc.querySelector('.tile-motion-layer'));
+      buttons[1].click(); await pause(30);
+      doc.querySelector('.undo-button').click(); await pause(220);
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Undo during animation cancels stale visual work', saved.moves === 2 && JSON.stringify(saved.board) === JSON.stringify(expected) && !doc.querySelector('.tile-motion-layer'));
+      buttons[1].click(); await pause(30);
+      doc.querySelector('.back-link').click(); await pause(220);
+      check('Leaving during movement clears animation and preserves the move', !!doc.querySelector('.game-card') && !doc.querySelector('.tile-motion-layer') && JSON.parse(win.localStorage.getItem(keys[0])).moves === 3);
+      const beforeNewGame = win.localStorage.getItem(keys[0]);
+      const bestBeforeNewGame = win.localStorage.getItem(keys[1]);
+      doc.querySelector('.game-card').click(); await pause();
+      doc.querySelector('.new-game-button').click(); await pause();
+      check('New game asks before replacing the saved game', doc.querySelector('[role="dialog"] h2')?.textContent === 'Začít znovu?' && win.localStorage.getItem(keys[0]) === beforeNewGame);
+      doc.querySelector('.board-overlay .text-button').click(); await pause();
+      check('Cancelling new game keeps the saved game', !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeNewGame);
+      doc.querySelector('.new-game-button').click(); await pause();
+      doc.querySelector('.primary-button').click(); await pause();
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Confirming new game resets the board and score', saved.score === 0 && saved.moves === 0 && saved.board.filter(Boolean).length === 2 && !doc.querySelector('[role="dialog"]'));
+      check('Starting a new game preserves the record', win.localStorage.getItem(keys[1]) === bestBeforeNewGame);
+      const beforeLanguageChange = win.localStorage.getItem(keys[0]);
+      doc.querySelector('.back-link').click(); await pause();
+      doc.querySelector('[data-language="en"]').click(); await pause();
+      check('Language switch translates the menu and marks the selection', doc.getElementById('menu-title').textContent.includes('Take a little break.') && doc.querySelector('[data-language="en"]').getAttribute('aria-pressed') === 'true');
+      check('Language switch updates document language, title and description', doc.documentElement.lang === 'en' && doc.title === 'Little Arcade · Games for a quiet moment' && doc.querySelector('meta[name="description"]').content.includes('Play 2048'));
+      check('Language switch preserves the saved game and best score', win.localStorage.getItem(keys[0]) === beforeLanguageChange && win.localStorage.getItem(keys[1]) === bestBeforeNewGame);
+      const dictionary = win.ArcadeTranslations;
+      check('Both dictionaries cover the same messages and placeholders', JSON.stringify(Object.keys(dictionary.cs).sort()) === JSON.stringify(Object.keys(dictionary.en).sort()) && Object.keys(dictionary.cs).every(key =>
+        JSON.stringify((dictionary.cs[key].match(/\{\w+\}/g) || []).sort()) === JSON.stringify((dictionary.en[key].match(/\{\w+\}/g) || []).sort())));
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`English menu has no horizontal overflow at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      await reload(); doc = frame.contentDocument;
+      check('English choice persists across reloads', doc.documentElement.lang === 'en' && doc.querySelector('[data-language="en"]').getAttribute('aria-pressed') === 'true');
+      doc.querySelector('.game-card').click(); await pause();
+      check('English translates game controls and accessibility labels', doc.querySelector('.new-game-button').textContent.includes('New game') && doc.querySelector('.board').getAttribute('aria-label').includes('Use the arrow keys') && doc.querySelector('.board .tile').getAttribute('aria-label').startsWith('Row 1, column 1:'));
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`English game has no horizontal overflow at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      check('English plural for zero moves', doc.querySelector('.below-board>span').textContent === '0 moves');
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      check('English singular and live announcement', doc.querySelector('.below-board>span').textContent === '1 move' && doc.querySelector('[aria-live]').textContent.includes('Move 1. Score'));
+      doc.querySelectorAll('.direction-pad button')[2].click(); await pause(220);
+      check('English plural for multiple moves', doc.querySelector('.below-board>span').textContent === '2 moves');
+      doc.querySelector('.new-game-button').click(); await pause();
+      check('English restart dialog and buttons', doc.querySelector('[role="dialog"] h2').textContent === 'Start again?' && doc.querySelector('.primary-button').textContent === 'Start a new game');
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, board: full, moves: 10 }));
+      await reload(); doc = frame.contentDocument;
+      check('English game-over dialog', doc.querySelector('[role="dialog"] h2').textContent === 'No more moves this time.');
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, board: [2048,2,...Array(14).fill(0)], won: true, moves: 100 }));
+      await reload(); doc = frame.contentDocument;
+      check('English win dialog', doc.querySelector('[role="dialog"] h2').textContent === 'You reached 2048!' && doc.querySelector('.primary-button').textContent === 'Keep playing');
+      doc.querySelector('.back-link').click(); await pause();
+      doc.querySelector('[data-language="cs"]').click(); await pause();
+      check('Switching back restores Czech', doc.documentElement.lang === 'cs' && doc.getElementById('menu-title').textContent.includes('Na chvíli vypnout.'));
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, score: 16384, moves: 4 }));
+      await reload(); doc = frame.contentDocument;
+      const csScore = doc.querySelector('.card-scores dd').textContent;
+      doc.querySelector('[data-language="en"]').click(); await pause();
+      check('Score formatting follows the selected language', csScore === new Intl.NumberFormat('cs-CZ').format(16384) && doc.querySelector('.card-scores dd').textContent === '16,384');
+      win.localStorage.setItem(keys[2], 'unknown');
+      await reload(); doc = frame.contentDocument;
+      check('Unsupported language renders Czech', doc.documentElement.lang === 'cs' && !doc.querySelector('[v-cloak]'));
+      doc.querySelector('.game-card').click(); await pause();
+      check('Czech plural for four moves', doc.querySelector('.below-board>span').textContent === '4 tahy');
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, moves: 5 }));
+      await reload(); doc = frame.contentDocument;
+      check('Czech plural for five moves', doc.querySelector('.below-board>span').textContent === '5 tahů');
+      let audioContexts = 0;
+      const tones = [];
+      const parameter = () => ({ setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {}, cancelScheduledValues() {}, setTargetAtTime() {} });
+      // Exercise the real sound controller and UI without playing sound during tests.
+      win.AudioContext = class {
+        constructor() { audioContexts++; this.state = 'running'; this.currentTime = 0; this.destination = {}; }
+        createGain() { return { gain: parameter(), connect() {}, disconnect() {} }; }
+        get sampleRate() { return 48000; }
+        createBuffer(channels, length) { return { getChannelData: () => new Float32Array(length) }; }
+        createBiquadFilter() { return { Q: parameter(), frequency: parameter(), connect() {}, disconnect() {} }; }
+        createBufferSource() {
+          return { type: 'noise', stops: [], connect() {}, disconnect() {}, start() { tones.push(this); }, stop(time) { this.stops.push(time); } };
+        }
+        createOscillator() {
+          const tone = { frequency: parameter(), stops: [], connect() {}, disconnect() {}, start() { tones.push(this); }, stop(time) { this.stops.push(time); } };
+          return tone;
+        }
+        resume() { this.state = 'running'; return Promise.resolve(); }
+        close() { this.state = 'closed'; return Promise.resolve(); }
+      };
+      const testAudioContext = win.AudioContext;
+      const soundButton = doc.querySelector('.sound-button');
+      check('Sound is off by default and no audio context is created', soundButton.getAttribute('aria-pressed') === 'false' && soundButton.textContent === 'Zvuk: ne' && audioContexts === 0);
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      check('Muted moves and merges never create audio', tones.length === 0 && audioContexts === 0);
+      doc.querySelector('.undo-button').click(); await pause();
+      const gameBeforeSound = win.localStorage.getItem(keys[0]);
+      soundButton.click(); await pause();
+      check('Opting in enables sound without changing the game', soundButton.getAttribute('aria-pressed') === 'true' && soundButton.textContent === 'Zvuk: ano' && audioContexts === 1 && win.localStorage.getItem(keys[0]) === gameBeforeSound);
+      doc.querySelector('.direction-pad button').click(); await pause(30);
+      check('A valid move starts one sliding noise sound', tones.length === 1 && tones[0].type === 'noise');
+      await pause(200);
+      check('Merge adds a two-note effect after landing', tones.length === 3);
+      soundButton.click(); await pause();
+      check('Muting stops active and scheduled notes', soundButton.getAttribute('aria-pressed') === 'false' && tones.every(tone => tone.stops.includes(0.025)));
+      doc.querySelector('.undo-button').click(); await pause();
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      check('Moves stay silent after muting', tones.length === 3);
+      win.AudioContext = originalAudioContext;
+      await reload(); doc = frame.contentDocument;
+      check('Reload starts with sound off', doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false');
+      const legacyGame = JSON.stringify({ ...seeded, score: 128, moves: 7 });
+      keys.forEach(key => win.localStorage.removeItem(key));
+      win.localStorage.setItem(legacyKeys[0], legacyGame);
+      win.localStorage.setItem(legacyKeys[1], '8192');
+      win.localStorage.setItem(legacyKeys[2], 'en');
+      await reload(); doc = frame.contentDocument;
+      check('Storage migration restores the existing game without losing progress', win.localStorage.getItem(keys[0]) === legacyGame && doc.querySelector('.below-board>span').textContent === '7 moves' && doc.querySelector('.scores strong').textContent === '128');
+      check('Storage migration preserves the record and language', win.localStorage.getItem(keys[1]) === '8192' && win.localStorage.getItem(keys[2]) === 'en' && doc.documentElement.lang === 'en');
+      check('Storage migration retains the original data as a fallback', win.localStorage.getItem(legacyKeys[0]) === legacyGame);
+      const newerGame = JSON.stringify({ ...seeded, score: 256, moves: 8 });
+      win.localStorage.setItem(keys[0], newerGame);
+      win.localStorage.setItem(keys[1], '16384');
+      win.localStorage.setItem(keys[2], 'cs');
+      await reload(); doc = frame.contentDocument;
+      check('New storage values take precedence over historical data', win.localStorage.getItem(keys[0]) === newerGame && doc.querySelector('.scores strong').textContent === '256' && doc.documentElement.lang === 'cs' && win.localStorage.getItem(keys[1]) === '16384');
+      function sendKey(key, options = {}) {
+        const event = new win.KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...options });
+        (doc.activeElement || doc.body).dispatchEvent(event);
+        return event;
+      }
+      win.AudioContext = testAudioContext;
+      const keyboardSound = doc.querySelector('.sound-button');
+      keyboardSound.focus();
+      sendKey('z'); await pause();
+      check('Z enables sound even when a button has focus', keyboardSound.getAttribute('aria-pressed') === 'true');
+      sendKey('z', { repeat: true }); await pause();
+      check('Holding Z does not repeatedly toggle sound', keyboardSound.getAttribute('aria-pressed') === 'true');
+      sendKey('z'); await pause();
+      check('A second Z disables sound', keyboardSound.getAttribute('aria-pressed') === 'false');
+      const beforeKeyboardRestart = win.localStorage.getItem(keys[0]);
+      doc.querySelector('.new-game-button').focus();
+      sendKey('n'); await pause();
+      check('N opens restart confirmation without changing the game', doc.querySelector('[role="dialog"] h2')?.textContent === 'Začít znovu?' && win.localStorage.getItem(keys[0]) === beforeKeyboardRestart);
+      sendKey('n', { repeat: true }); await pause();
+      check('Holding N cannot confirm the restart', !!doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeKeyboardRestart);
+      const backspaceEvent = sendKey('Backspace'); await pause();
+      check('Backspace cancels restart and restores board focus', backspaceEvent.defaultPrevented && !doc.querySelector('[role="dialog"]') && doc.activeElement === doc.querySelector('.board') && win.localStorage.getItem(keys[0]) === beforeKeyboardRestart);
+      sendKey('n'); await pause();
+      sendKey('Enter'); await pause();
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Enter confirms the pending new game and preserves the record', !doc.querySelector('[role="dialog"]') && saved.moves === 0 && saved.score === 0 && win.localStorage.getItem(keys[1]) === '16384');
+      win.localStorage.setItem(keys[0], newerGame);
+      win.AudioContext = originalAudioContext;
+      await reload(); doc = frame.contentDocument;
+      sendKey('n'); await pause();
+      sendKey('n'); await pause();
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('A separate second N confirms the new game', !doc.querySelector('[role="dialog"]') && saved.moves === 0 && saved.score === 0);
+      const beforeIgnoredShortcuts = win.localStorage.getItem(keys[0]);
+      const input = doc.createElement('input');
+      doc.body.append(input); input.focus();
+      const inputN = sendKey('n'), inputZ = sendKey('z'), inputBackspace = sendKey('Backspace');
+      await pause();
+      check('Shortcuts leave text inputs and editing keys alone', !inputN.defaultPrevented && !inputZ.defaultPrevented && !inputBackspace.defaultPrevented && !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts);
+      input.remove(); doc.querySelector('.board').focus();
+      sendKey('n', { ctrlKey: true }); sendKey('n', { isComposing: true }); await pause();
+      check('Shortcuts ignore modifiers and text composition', !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts);
+      doc.querySelector('.back-link').click(); await pause();
+      sendKey('n'); sendKey('z'); await pause();
+      check('Game shortcuts do not act on the menu', !!doc.querySelector('.game-card') && !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts);
+      const blockedGame = JSON.stringify({ ...seeded, board: [2, 4, 8, 16, ...Array(12).fill(0)], moves: 3 });
+      win.localStorage.setItem(keys[0], blockedGame);
+      await reload(); doc = frame.contentDocument;
+      win.AudioContext = testAudioContext;
+      doc.querySelector('.game-card').click(); await pause();
+      const tonesBeforeBlocked = tones.length;
+      doc.querySelector('.direction-pad button').click(); await pause(160);
+      check('Blocked moves stay silent while sound is off', tones.length === tonesBeforeBlocked && win.localStorage.getItem(keys[0]) === blockedGame);
+      doc.querySelector('.sound-button').click(); await pause();
+      doc.querySelector('.direction-pad button').click(); await pause(160);
+      check('Blocked move plays a distinct two-tap sound', tones.length === tonesBeforeBlocked + 2 && tones.slice(-2).every(tone => tone.type === 'triangle'));
+      check('Blocked sound leaves the board, score and move count unchanged', win.localStorage.getItem(keys[0]) === blockedGame && !doc.querySelector('.tile-motion-layer'));
+      doc.querySelector('.guide-toggle').click(); await pause();
+      check('Help can be hidden without changing the game', win.getComputedStyle(doc.querySelector('.game-guide')).display === 'none' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false' && win.localStorage.getItem(keys[0]) === blockedGame);
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        const gameBounds = doc.querySelector('.game-area').getBoundingClientRect();
+        const mainBounds = doc.querySelector('.play-page').getBoundingClientRect();
+        check(`Hidden help centres the game at ${width}px without overflow`, Math.abs((gameBounds.left + gameBounds.right) / 2 - (mainBounds.left + mainBounds.right) / 2) < 1 && doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      doc.querySelector('.guide-toggle').click(); await pause();
+      check('Help can be shown again without changing the game', win.getComputedStyle(doc.querySelector('.game-guide')).display !== 'none' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true' && win.localStorage.getItem(keys[0]) === blockedGame);
+      doc.querySelector('.back-link').click(); await pause();
+      const allTranslations = win.ArcadeTranslations;
+      check('Every supported language has all messages and matching placeholders', allTranslations.languages.every(({ code }) =>
+        Object.keys(allTranslations.cs).every(key => Object.hasOwn(allTranslations[code], key) && JSON.stringify((allTranslations.cs[key].match(/\{\w+\}/g) || []).sort()) === JSON.stringify((allTranslations[code][key].match(/\{\w+\}/g) || []).sort()))));
+      for (const option of [
+        { code: 'de', heading: 'Kurz abschalten.', newGame: 'Neues Spiel', restart: 'Neu anfangen?', count: '3 Züge' },
+        { code: 'es', heading: 'Tómate un descanso.', newGame: 'Nueva partida', restart: '¿Empezar de nuevo?', count: '3 jugadas' },
+        { code: 'ja', heading: 'ちょっとひと休み。', newGame: '新しいゲーム', restart: '最初から始めますか？', count: '3手' }
+      ]) {
+        doc.querySelector(`[data-language="${option.code}"]`).click(); await pause();
+        check(`${option.code} translates the menu and preserves progress`, doc.documentElement.lang === option.code && doc.getElementById('menu-title').textContent.includes(option.heading) && win.localStorage.getItem(keys[0]) === blockedGame);
+        for (const width of [320, 390, 768, 1440]) {
+          frame.style.width = `${width}px`; await pause();
+          check(`${option.code} menu fits at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+        }
+        await reload(); doc = frame.contentDocument;
+        check(`${option.code} choice survives reload`, doc.documentElement.lang === option.code && doc.querySelector(`[data-language="${option.code}"]`).getAttribute('aria-pressed') === 'true');
+        doc.querySelector('.game-card').click(); await pause();
+        check(`${option.code} translates game controls and move counts`, doc.querySelector('.new-game-button').textContent.includes(option.newGame) && doc.querySelector('.below-board>span').textContent === option.count);
+        for (const width of [320, 390, 768, 1440]) {
+          frame.style.width = `${width}px`; await pause();
+          check(`${option.code} game fits at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+        }
+        doc.querySelector('.new-game-button').click(); await pause();
+        check(`${option.code} translates restart confirmation`, doc.querySelector('[role="dialog"] h2').textContent === option.restart);
+        doc.querySelector('.board-overlay .text-button').click(); await pause();
+        doc.querySelector('.back-link').click(); await pause();
+      }
+      doc.querySelector('[data-language="ar"]').click(); await pause();
+      check('Arabic translates the menu, enables RTL and preserves the game', doc.documentElement.lang === 'ar' && doc.documentElement.dir === 'rtl' && doc.getElementById('menu-title').textContent.includes('خذ استراحة قصيرة.') && win.localStorage.getItem(keys[0]) === blockedGame);
+      check('Arabic localises menu tile numbers and score', doc.querySelector('.mini-2048').textContent.trim() === '٢٠٤٨' && doc.querySelector('.card-scores dd').textContent === '٠');
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`Arabic menu fits at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      await reload(); doc = frame.contentDocument;
+      check('Arabic selection and RTL survive reload', doc.documentElement.lang === 'ar' && doc.documentElement.dir === 'rtl');
+      doc.querySelector('.game-card').click(); await pause();
+      check('Arabic localises game tiles, headings and accessibility labels', doc.querySelector('.board .tile').textContent.trim() === '٢' && doc.querySelector('#game-title').textContent.includes('٢٠٤٨') && doc.querySelector('.board .tile').getAttribute('aria-label').includes('الصف ١'));
+      const arabicCells = doc.querySelectorAll('.board .tile');
+      check('RTL keeps board coordinates and direction buttons physically consistent', arabicCells[0].getBoundingClientRect().left < arabicCells[3].getBoundingClientRect().left && win.getComputedStyle(doc.querySelector('.direction-pad')).direction === 'ltr');
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        check(`Arabic game fits at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      doc.querySelector('.board').dispatchEvent(new win.KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+      await pause(220);
+      saved = JSON.parse(win.localStorage.getItem(keys[0]));
+      check('Arabic keyboard movement preserves physical direction and numeric storage', JSON.stringify(saved.board.slice(12)) === '[2,4,8,16]' && saved.moves === 4 && typeof saved.score === 'number');
+      doc.querySelector('.undo-button').click(); await pause();
+      doc.querySelector('.new-game-button').click(); await pause();
+      check('Arabic restart confirmation is translated', doc.querySelector('[role="dialog"] h2').textContent === 'هل تريد البدء من جديد؟');
+      doc.querySelector('.board-overlay .text-button').click(); await pause();
+      for (const [count, expected] of [[0, 'لا نقلات'], [1, '١ نقلة'], [2, 'نقلتان'], [3, '٣ نقلات'], [11, '١١ نقلة'], [100, '١٠٠ نقلة']]) {
+        win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, moves: count }));
+        await reload(); doc = frame.contentDocument;
+        check(`Arabic plural form for ${count} moves`, doc.querySelector('.below-board>span').textContent === expected);
+      }
+      doc.querySelector('.back-link').click(); await pause();
+      doc.querySelector('[data-language="en"]').click(); await pause();
+      check('Switching away from Arabic restores LTR and Latin digits', doc.documentElement.dir === 'ltr' && doc.querySelector('.mini-2048').textContent.trim() === '2048');
+      const classicGame = JSON.stringify({ ...seeded, score: 64, moves: 4 });
+      const speedyGame = JSON.stringify({ ...seeded, board: [4, 4, ...Array(14).fill(0)], score: 512, moves: 2 });
+      win.localStorage.setItem(keys[0], classicGame);
+      win.localStorage.setItem(keys[1], '2048');
+      win.localStorage.setItem(speedyKeys[0], speedyGame);
+      win.localStorage.setItem(speedyKeys[1], '512');
+      await reload(); doc = frame.contentDocument;
+      check('Menu offers classic and speedy with independent scores', doc.querySelectorAll('.game-card').length === 2 && doc.querySelector('[data-game="classic"] h3').textContent.includes('classic') && doc.querySelector('[data-game="speedy"] h3').textContent.includes('speedy') && doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '512');
+      doc.querySelector('[data-game="speedy"]').click(); await pause();
+      check('Speedy loads its own game, title and record', win.location.hash === '#/2048-speedy' && doc.querySelector('.game-variant').textContent === 'speedy' && doc.title.includes('2048 speedy') && doc.querySelector('.scores strong').textContent === '512');
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      let updatedSpeedy = win.localStorage.getItem(speedyKeys[0]);
+      check('Speedy moves update only the speedy save and record', JSON.parse(updatedSpeedy).score === 520 && win.localStorage.getItem(speedyKeys[1]) === '520' && win.localStorage.getItem(keys[0]) === classicGame && win.localStorage.getItem(keys[1]) === '2048');
+      doc.querySelector('.back-link').click(); await pause();
+      updatedSpeedy = win.localStorage.getItem(speedyKeys[0]);
+      check('Menu retains both games after playing speedy', doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '520');
+      doc.querySelector('[data-game="classic"]').click(); await pause();
+      check('Classic keeps the original route and previous progress', win.location.hash === '#/2048' && doc.querySelector('.game-variant').textContent === 'classic' && doc.querySelector('.scores strong').textContent === '64');
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      const updatedClassic = win.localStorage.getItem(keys[0]);
+      check('Classic moves leave speedy progress untouched', JSON.parse(updatedClassic).score === 68 && win.localStorage.getItem(speedyKeys[0]) === updatedSpeedy);
+      win.location.hash = '#/2048-speedy'; await pause();
+      doc.querySelector('.undo-button').click(); await pause();
+      check('Switching games restores the correct undo history', JSON.parse(win.localStorage.getItem(speedyKeys[0])).score === 512 && win.localStorage.getItem(keys[0]) === updatedClassic && win.localStorage.getItem(speedyKeys[1]) === '520');
+      doc.querySelector('.new-game-button').click(); await pause();
+      doc.querySelector('.primary-button').click(); await pause();
+      check('Restarting speedy preserves classic and the speedy record', JSON.parse(win.localStorage.getItem(speedyKeys[0])).moves === 0 && win.localStorage.getItem(keys[0]) === updatedClassic && win.localStorage.getItem(speedyKeys[1]) === '520');
+      await reload(); doc = frame.contentDocument;
+      check('A direct speedy URL restores speedy after reload', win.location.hash === '#/2048-speedy' && doc.querySelector('.game-variant').textContent === 'speedy' && doc.querySelector('.scores strong').textContent === '0' && win.localStorage.getItem(keys[0]) === updatedClassic);
+      check('Speedy starts with a two-second countdown above the board', !!doc.querySelector('.speedy-time') && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) > 1000 && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) <= 2000);
+      await pause(2100);
+      check('New speedy game waits for the first valid move', !doc.querySelector('[role="dialog"]') && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) === 2000 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).timerStarted === false);
+      const waitingState = { ...seeded, board: [2, 4, 8, 16, ...Array(12).fill(0)], remainingMs: 2000, timeBudgetMs: 2000, timerStarted: false };
+      doc.querySelector('.back-link').click(); await pause();
+      win.localStorage.setItem(speedyKeys[0], JSON.stringify(waitingState));
+      await reload(); doc = frame.contentDocument;
+      doc.querySelector('[data-game="speedy"]').click(); await pause();
+      doc.querySelector('.direction-pad button').click(); await pause(300);
+      check('An invalid first move does not start the countdown', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) === 2000 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).timerStarted === false);
+      doc.querySelectorAll('.direction-pad button')[2].click(); await pause(100);
+      check('First valid move starts the countdown and earns the normal one-second bonus', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < 3000 && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) > 2700 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).timerStarted === true);
+      doc.querySelector('.undo-button').click(); await pause(100);
+      const timeAfterFirstUndo = Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow'));
+      await pause(100);
+      check('Undoing the first move does not rearm the waiting state', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < timeAfterFirstUndo && JSON.parse(win.localStorage.getItem(speedyKeys[0])).timerStarted === true);
+      await pause(2100);
+      check('Running out of time ends speedy and stores zero time', doc.querySelector('[role="dialog"] h2')?.textContent === 'Time’s up!' && JSON.parse(win.localStorage.getItem(speedyKeys[0])).remainingMs === 0 && Array.from(doc.querySelectorAll('.direction-pad button')).every(button => button.disabled));
+      async function loadTimedGame(state) {
+        doc.querySelector('.back-link').click(); await pause();
+        win.localStorage.setItem(speedyKeys[0], JSON.stringify(state));
+        await reload(); doc = frame.contentDocument;
+        doc.querySelector('[data-game="speedy"]').click(); await pause();
+      }
+      const timedGame = { ...seeded, score: 64, moves: 3, remainingMs: 800, timeBudgetMs: 1000 };
+      await loadTimedGame({ ...timedGame, remainingMs: 1500, timeBudgetMs: 2000 });
+      check('Timer stays green above half the turn budget', !doc.querySelector('.speedy-time').classList.contains('time-warning') && !doc.querySelector('.speedy-time').classList.contains('time-low'));
+      await loadTimedGame({ ...timedGame, remainingMs: 900, timeBudgetMs: 2000 });
+      check('Timer turns yellow below half the turn budget', doc.querySelector('.speedy-time').classList.contains('time-warning') && !doc.querySelector('.speedy-time').classList.contains('time-low'));
+      await loadTimedGame({ ...timedGame, remainingMs: 500, timeBudgetMs: 2000 });
+      check('Timer turns red at half a second and overrides yellow', doc.querySelector('.speedy-time').classList.contains('time-low') && !doc.querySelector('.speedy-time').classList.contains('time-warning'));
+      await loadTimedGame(timedGame);
+      const beforeTimedMove = Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow'));
+      doc.querySelector('.direction-pad button').click(); await pause(60);
+      saved = JSON.parse(win.localStorage.getItem(speedyKeys[0]));
+      check('A fast valid move carries unused time forward and adds one second', saved.moves === 4 && saved.score === 68 && saved.remainingMs > 1600 && saved.remainingMs <= 1800);
+      doc.querySelector('.undo-button').click(); await pause(30);
+      const afterTimedUndo = Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow'));
+      check('Undo removes the move bonus without refunding elapsed time', JSON.parse(win.localStorage.getItem(speedyKeys[0])).moves === 3 && afterTimedUndo < beforeTimedMove && afterTimedUndo > beforeTimedMove - 200);
+      doc.querySelector('.new-game-button').click(); await pause();
+      const pausedTime = Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow'));
+      await pause(1200);
+      check('Restart confirmation pauses the countdown', doc.querySelector('[role="dialog"] h2')?.textContent === 'Start again?' && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) === pausedTime);
+      doc.querySelector('.board-overlay .text-button').click(); await pause(100);
+      check('Cancelling restart resumes the remaining time', !doc.querySelector('[role="dialog"]') && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < pausedTime);
+      await loadTimedGame({ ...timedGame, board: [2, 4, 8, 16, ...Array(12).fill(0)] });
+      const beforeInvalidTime = Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow'));
+      doc.querySelector('.direction-pad button').click(); await pause(100);
+      check('Invalid moves add no time', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < beforeInvalidTime - 50 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).moves === 3);
+      doc.querySelector('.back-link').click(); await pause();
+      const menuTime = JSON.parse(win.localStorage.getItem(speedyKeys[0])).remainingMs;
+      await pause(1000);
+      check('Returning to the menu pauses and saves the remaining time', JSON.parse(win.localStorage.getItem(speedyKeys[0])).remainingMs === menuTime && menuTime > 0);
+      doc.querySelector('[data-game="speedy"]').click(); await pause();
+      check('Reopening speedy resumes its saved budget instead of resetting it', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < menuTime && Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) > 0);
+      await reload(); doc = frame.contentDocument;
+      check('Reload preserves the countdown instead of granting a new second', Number(doc.querySelector('.speedy-time-track').getAttribute('aria-valuenow')) < menuTime);
+      doc.querySelector('.back-link').click(); await pause();
+      doc.querySelector('[data-game="classic"]').click(); await pause(1100);
+      check('Classic remains untimed', !doc.querySelector('.speedy-time') && !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === updatedClassic);
+      const beforeExpandedSave = win.localStorage.getItem(keys[0]);
+      const normalBoardWidth = doc.querySelector('.board').getBoundingClientRect().width;
+      const originalHelp = doc.querySelector('.guide-toggle').getAttribute('aria-expanded');
+      check('Window mode toggle sits between new game and help', doc.querySelector('.new-game-button').nextElementSibling === doc.querySelector('.fullscreen-button') && doc.querySelector('.fullscreen-button').nextElementSibling === doc.querySelector('.guide-toggle'));
+      doc.querySelector('.fullscreen-button').click(); await pause(150);
+      check('Expanded view fills the window and enlarges the board', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true' && doc.querySelector('.board').getBoundingClientRect().width > normalBoardWidth && win.getComputedStyle(doc.querySelector('.site-header')).display === 'none');
+      check('Expanded view preserves game state', win.localStorage.getItem(keys[0]) === beforeExpandedSave);
+      for (const [width, height] of [[1440,1100], [768,1024], [390,844], [844,390], [320,568]]) {
+        frame.style.width = `${width}px`; frame.style.height = `${height}px`; await pause(180); win.dispatchEvent(new win.Event('resize')); await pause(60);
+        const bounds = doc.querySelector('.board').getBoundingClientRect();
+        const controls = doc.querySelector('.direction-pad').getBoundingClientRect();
+        check(`Expanded board stays square and fits ${width}x${height}`, Math.abs(bounds.width - bounds.height) < 1 && bounds.left >= 0 && bounds.right <= win.innerWidth + 1 && bounds.top >= 0 && controls.bottom <= win.innerHeight + 1);
+      }
+      sendKey('Escape'); await pause(120);
+      check('Escape restores normal view and the previous help state', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === originalHelp && win.localStorage.getItem(keys[0]) === beforeExpandedSave);
+      doc.querySelector('.back-link').click(); await pause();
+      win.localStorage.setItem(speedyKeys[0], JSON.stringify({ ...timedGame, remainingMs: 2000, timeBudgetMs: 2000, moves: 0, timerStarted: false }));
+      await reload(); doc = frame.contentDocument;
+      doc.querySelector('[data-game="speedy"]').click(); await pause();
+      doc.querySelector('.fullscreen-button').click(); await pause(150);
+      for (const [width, height] of [[1440,1100], [390,844], [844,390]]) {
+        frame.style.width = `${width}px`; frame.style.height = `${height}px`; await pause(180); win.dispatchEvent(new win.Event('resize')); await pause(60);
+        const bounds = doc.querySelector('.board').getBoundingClientRect();
+        const controls = doc.querySelector('.direction-pad').getBoundingClientRect();
+        check(`Expanded speedy includes timer and fits ${width}x${height}`, !!doc.querySelector('.speedy-time') && Math.abs(bounds.width - bounds.height) < 1 && bounds.right <= win.innerWidth + 1 && controls.bottom <= win.innerHeight + 1);
+      }
+      doc.querySelector('.fullscreen-button').click(); await pause();
+      check('Window toggle also restores speedy to normal view', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'false');
+      const beforeFShortcut = win.localStorage.getItem(speedyKeys[0]);
+      sendKey('f'); await pause(100);
+      check('F activates expanded view', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true');
+      sendKey('f', { repeat: true }); await pause();
+      check('Holding F does not repeatedly toggle the view', doc.querySelector('#app').classList.contains('expanded-mode'));
+      sendKey('f'); await pause(100);
+      check('A second F restores normal view without changing the game', !doc.querySelector('#app').classList.contains('expanded-mode') && win.localStorage.getItem(speedyKeys[0]) === beforeFShortcut);
+      check('Tooltips show the assigned keyboard shortcuts', doc.querySelector('.new-game-button').title.endsWith('(N)') && doc.querySelector('.fullscreen-button').title.endsWith('(F)') && doc.querySelector('.sound-button').title.endsWith('(Z)') && doc.querySelector('.fullscreen-button').getAttribute('aria-keyshortcuts') === 'F');
+      doc.querySelector('.guide-toggle').focus();
+      const helpBeforeH = doc.querySelector('.guide-toggle').getAttribute('aria-expanded');
+      const gameBeforeH = win.localStorage.getItem(speedyKeys[0]);
+      sendKey('h'); await pause();
+      check('H toggles help even when a button has focus', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') !== helpBeforeH && doc.querySelector('.guide-toggle').title.endsWith('(H)'));
+      sendKey('h', { repeat: true }); await pause();
+      check('Holding H does not repeatedly toggle help', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') !== helpBeforeH);
+      sendKey('h'); await pause();
+      check('A second H restores help without changing the game', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === helpBeforeH && win.localStorage.getItem(speedyKeys[0]) === gameBeforeH);
+      frame.style.width = '1440px'; frame.style.height = '1100px';
+    } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
+    finally {
+      win.location.hash = '#/'; await pause();
+      win.AudioContext = originalAudioContext;
+      if (originals) keys.forEach((key, index) => originals[index] === null ? win.localStorage.removeItem(key) : win.localStorage.setItem(key, originals[index]));
+      if (legacyOriginals) legacyKeys.forEach((key, index) => legacyOriginals[index] === null ? win.localStorage.removeItem(key) : win.localStorage.setItem(key, legacyOriginals[index]));
+      if (speedyOriginals) speedyKeys.forEach((key, index) => speedyOriginals[index] === null ? win.localStorage.removeItem(key) : win.localStorage.setItem(key, speedyOriginals[index]));
+      lines.push(`\nFailures: ${failures}`);
+      document.getElementById('results').textContent = lines.join('\n');
+      document.title = failures ? 'FAIL UI' : 'PASS UI';
+    }
+  }, { once: true });
+</script></body></html>

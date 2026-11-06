@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f3ed">
+  <meta name="description" content="">
+  <title>2048</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="vendor/vue.global.prod.js"></script>
+  <script defer src="js/game2048.js"></script>
+  <script defer src="js/speedy-clock.js"></script>
+  <script defer src="js/translations.js"></script>
+  <script defer src="js/audio.js"></script>
+  <script defer src="js/app.js"></script>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <header class="site-header">
+      <a class="brand" href="#/" :aria-label="t('brand.home')"><span class="brand-mark" aria-hidden="true">m<span>.</span></span>{{ t('brand.name') }}<span class="brand-dot">/</span></a>
+      <span class="header-note">{{ t('header.note') }}</span>
+      <div class="language-switch" role="group" :aria-label="t('language.change')">
+        <button v-for="option in languages" :key="option.code" type="button" :lang="option.code" :aria-label="option.name" :aria-pressed="language === option.code" :data-language="option.code" @click="setLanguage(option.code)">{{ option.short }}</button>
+      </div>
+    </header>
+
+    <main v-if="page === 'menu'" class="menu-page">
+      <section class="intro" aria-labelledby="menu-title">
+        <div class="intro-topline">
+          <p class="eyebrow"><span class="status-dot"></span> {{ t('menu.eyebrow') }}</p>
+        </div>
+        <h1 id="menu-title" tabindex="-1">{{ t('menu.title') }}<br><span>{{ t('menu.subtitle') }}</span></h1>
+        <p class="intro-copy">{{ t('menu.intro') }}<br class="desktop-break"> {{ t('menu.invitation') }}</p>
+      </section>
+      <section class="collection" aria-labelledby="collection-title">
+        <div class="section-heading"><h2 id="collection-title">{{ t('menu.collection') }}</h2><span>{{ t('menu.count') }}</span></div>
+        <div class="game-list">
+          <a v-for="game in games" :key="game.id" :href="game.hash" class="game-card" :data-game="game.id">
+            <div class="card-art" aria-hidden="true">
+              <span class="art-ring ring-one"></span><span class="art-ring ring-two"></span>
+              <div v-if="game.id === 'speedy'" class="speedy-preview">
+                <div class="speedy-preview-clock"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4m6 2 2-2M12 10v4l3 2"/></svg><span>{{ t('speedy.remaining', { time: formatTile(2) }) }}</span></div>
+                <div class="speedy-preview-stack"><span class="speed-line line-one"></span><span class="speed-line line-two"></span><span class="speed-line line-three"></span><span class="speedy-sample sample-back">{{ formatTile(2) }}</span><span class="speedy-sample sample-front">{{ formatTile(2048) }}</span><span class="speedy-sample sample-small">{{ formatTile(4) }}</span><svg class="speedy-bolt" viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="m14 2-10 12h7l-1 8 10-12h-7Z"/></svg></div>
+                <div class="speedy-preview-track"><span></span></div>
+              </div>
+              <div v-else class="mini-board"><span class="mini-2"> {{ formatTile(2) }}</span><span class="mini-4"> {{ formatTile(4) }}</span><span class="mini-8"> {{ formatTile(8) }}</span><span class="mini-16"> {{ formatTile(16) }}</span><span class="mini-32"> {{ formatTile(32) }}</span><span class="mini-64"> {{ formatTile(64) }}</span><span class="mini-128"> {{ formatTile(128) }}</span><span class="mini-256"> {{ formatTile(256) }}</span><span class="mini-2048"> {{ formatTile(2048) }}</span></div>
+              <span class="art-caption">{{ t(game.id === 'speedy' ? 'speedy.timer' : 'card.caption') }}</span>
+            </div>
+            <div class="card-content">
+              <div class="card-labels"><span class="tag">{{ t('card.category') }}</span><span class="time-label">{{ t('card.duration') }}</span></div>
+              <h3><span>{{ formatTile(2048) }}<small class="card-variant">{{ t(`game.variant.${game.id}`) }}</small></span><span class="card-arrow" aria-hidden="true">↗</span></h3>
+              <p>{{ t(game.id === 'speedy' ? 'speedy.rules' : 'card.description') }}<br>{{ t('card.goal') }}</p>
+              <dl class="card-scores">
+                <div><dt>{{ t('card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
+                <div><dt>{{ t('card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
+              </dl>
+              <span class="card-play">{{ t(gameStates[game.id]?.moves > 0 ? 'card.continue' : 'card.play') }} <span aria-hidden="true">→</span></span>
+            </div>
+          </a>
+          <article v-for="slot in 2" :key="`coming-${slot}`" class="coming-card">
+            <span class="coming-icon" aria-hidden="true">✳</span>
+            <span class="tag">{{ t('coming.label') }}</span>
+            <h3>{{ t('coming.title') }}<br>{{ t('coming.subtitle') }}</h3>
+            <p>{{ t('coming.description') }}<br>{{ t('coming.more') }}</p>
+            <span class="coming-bottom">{{ t('coming.footer') }} <span aria-hidden="true">＋</span></span>
+          </article>
+        </div>
+      </section>
+      <div class="menu-benefits"><span><b aria-hidden="true">↔</b> {{ t('benefits.devices') }}</span><span><b aria-hidden="true">◎</b> {{ t('benefits.account') }}</span><span><b aria-hidden="true">↳</b> {{ t('benefits.pace') }}</span></div>
+    </main>
+
+    <main v-else ref="playPage" class="play-page" :style="expanded ? { '--expanded-board-size': `${expandedBoardSize}px` } : undefined">
+      <div class="play-topbar">
+        <a class="back-link topbar-button" href="#/"><span class="back-arrow" aria-hidden="true">←</span> {{ t('game.back') }}</a>
+        <div class="topbar-actions">
+          <button type="button" class="new-game-button topbar-button" aria-keyshortcuts="N" :title="shortcutTitle('game.new', 'N')" @click="requestNew">{{ t('game.new') }} <span aria-hidden="true">↻</span></button>
+          <button type="button" class="fullscreen-button topbar-button icon-button" aria-keyshortcuts="F" :aria-pressed="expanded" :aria-label="t(expanded ? 'view.restore' : 'view.expand')" :title="shortcutTitle(expanded ? 'view.restore' : 'view.expand', 'F')" @click="toggleExpanded"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path v-if="!expanded" d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/><path v-else d="M3 8h5V3m8 0v5h5M8 21v-5H3m18 0h-5v5"/></svg></button>
+          <button type="button" class="guide-toggle topbar-button icon-button" aria-keyshortcuts="H" aria-controls="game-guide" :aria-expanded="guideVisible" :aria-label="t(guideVisible ? 'guide.hide' : 'guide.show')" :title="shortcutTitle(guideVisible ? 'guide.hide' : 'guide.show', 'H')" @click="guideVisible = !guideVisible"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 3H20v19H6.5A2.5 2.5 0 0 1 4 19.5v-14A2.5 2.5 0 0 1 6.5 3Z"/><path d="M8 7h8M8 11h6M8 3v14"/></svg></button>
+          <button type="button" class="sound-button topbar-button" aria-keyshortcuts="Z" :aria-pressed="soundEnabled" :aria-label="t('sound.toggle')" :disabled="!audioAvailable" :title="audioAvailable ? shortcutTitle(soundEnabled ? 'sound.on' : 'sound.off', 'Z') : t('sound.unavailable')" @click="toggleSound"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6 9H3v6h3l5 4Z"/><path v-if="soundEnabled" d="M15 8a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14"/><path v-else d="m3 3 18 18"/></svg><span class="sr-only">{{ t(soundEnabled ? 'sound.on' : 'sound.off') }}</span></button>
+        </div>
+      </div>
+      <div class="play-layout" :class="{ 'guide-hidden': !guideVisible }">
+        <section class="game-area" aria-labelledby="game-title">
+          <div class="game-heading"><div><p class="eyebrow">{{ t('game.eyebrow') }}</p><h1 id="game-title" tabindex="-1"> {{ formatTile(2048) }}<span>.</span><small class="game-variant">{{ t(`game.variant.${activeGame}`) }}</small></h1></div><div class="scores"><div><span>{{ t('game.score') }}</span><strong>{{ format(score) }}</strong></div><div><span>{{ t('game.best') }}</span><strong>{{ format(best) }}</strong></div></div></div>
+          <div class="game-toolbar">
+            <span>{{ t('game.goal') }} <b>{{ formatTile(2048) }}.</b></span>
+          </div>
+          <div v-if="isSpeedy" class="speedy-time" :class="{ 'time-warning': timeFraction < 0.5 && remainingMs > 500, 'time-low': remainingMs <= 500 }">
+            <div class="speedy-time-caption"><span>{{ t('speedy.timer') }}</span><strong>{{ timeLabel }}</strong></div>
+            <div class="speedy-time-track" role="progressbar" :aria-label="t('speedy.timer')" aria-valuemin="0" :aria-valuemax="timeBudgetMs" :aria-valuenow="Math.round(remainingMs)" :aria-valuetext="timeLabel"><div class="speedy-time-fill" :style="{ transform: `scaleX(${timeFraction})` }"></div></div>
+            <p>{{ t('speedy.rules') }}</p>
+          </div>
+          <div class="board-wrap">
+            <div ref="boardElement" class="board" :class="{ 'board-animating': animating }" role="group" tabindex="0" :aria-label="t('game.board')" @keydown="onBoardKey" @pointerdown="onPointerDown" @pointerup="onPointerUp" @pointercancel="pointerStart = null" @lostpointercapture="pointerStart = null">
+              <div v-for="(value, index) in board" :key="index" class="tile" :class="[tileClass(value), { 'tile-new': index === spawned, 'tile-merged': merged.includes(index) }]" :aria-label="t('game.cell', { row: formatTile(Math.floor(index / 4) + 1), column: formatTile(index % 4 + 1), value: value ? format(value) : t('game.empty') })"><span :key="`${index}-${value}`">{{ value ? formatTile(value) : '' }}</span></div>
+            </div>
+            <div v-if="animating" ref="motionLayer" class="tile-motion-layer" aria-hidden="true">
+              <div v-for="tile in motionTiles" :key="tile.from" class="tile moving-tile" :class="tileClass(tile.value)" :style="tile.style"><span>{{ formatTile(tile.value) }}</span></div>
+            </div>
+            <div v-if="overlay" class="board-overlay" role="dialog" aria-modal="true" :aria-label="overlayTitle" @keydown.esc.prevent="dismissOverlay" @keydown.tab="trapDialogFocus">
+              <span class="overlay-symbol" aria-hidden="true">{{ overlay === 'won' ? '✦' : overlay === 'restart' ? '↻' : '↗' }}</span><h2>{{ overlayTitle }}</h2><p>{{ t(`dialog.${overlay}.description`) }}</p>
+              <button ref="dialogPrimary" class="primary-button" :title="shortcutTitle(overlay === 'won' ? 'dialog.continue' : 'dialog.start', overlay === 'restart' ? 'N / Enter' : 'Enter')" :aria-keyshortcuts="overlay === 'restart' ? 'N Enter' : undefined" @click="overlay === 'won' ? continueGame() : newGame()">{{ t(overlay === 'won' ? 'dialog.continue' : 'dialog.start') }}</button>
+              <button v-if="overlay === 'restart'" class="text-button" aria-keyshortcuts="Backspace Escape" :title="shortcutTitle('dialog.cancel', 'Backspace / Escape')" @click="dismissOverlay">{{ t('dialog.cancel') }}</button>
+              <button v-if="overlay === 'over' && previous" class="text-button" @click="undo">{{ t('dialog.undo') }}</button>
+              <a v-if="overlay !== 'restart'" href="#/">{{ t('game.back') }}</a>
+            </div>
+          </div>
+          <div class="below-board"><button class="undo-button" :disabled="!previous || !!overlay" @click="undo">↶ {{ t('game.undo') }}</button><span>{{ plural('game.moves', moves) }}</span></div>
+          <div class="direction-pad" :aria-label="t('game.directions')"><button :aria-label="t('game.left')" :title="shortcutTitle('game.left', '← / A')" :disabled="!!overlay" @click="move('left')">←</button><button :aria-label="t('game.up')" :title="shortcutTitle('game.up', '↑ / W')" :disabled="!!overlay" @click="move('up')">↑</button><button :aria-label="t('game.down')" :title="shortcutTitle('game.down', '↓ / S')" :disabled="!!overlay" @click="move('down')">↓</button><button :aria-label="t('game.right')" :title="shortcutTitle('game.right', '→ / D')" :disabled="!!overlay" @click="move('right')">→</button></div>
+        </section>
+        <aside id="game-guide" v-show="guideVisible" class="game-guide"><span class="guide-mark" aria-hidden="true"> {{ formatTile(2) }}<span>+</span> {{ formatTile(2) }}</span><p class="eyebrow">{{ t('guide.eyebrow') }}</p><h2>{{ t('guide.title') }}<br>{{ t('guide.subtitle') }}</h2><p>{{ t('guide.rules') }}</p><div class="merge-example" :aria-label="t('guide.example')"><span> {{ formatTile(2) }}</span><b>+</b><span> {{ formatTile(2) }}</span><b>→</b><span> {{ formatTile(4) }}</span></div><p>{{ t('guide.spawn') }} <strong> {{ formatTile(2048) }}</strong>{{ t('guide.goalSeparator') }} {{ t('guide.goal') }}</p><div class="controls-help"><h3>{{ t('guide.controls') }}</h3><p><span aria-hidden="true">⌨</span> {{ t('guide.keyboard') }}</p><p><span aria-hidden="true">↔</span> {{ t('guide.touch') }}</p><p><span aria-hidden="true">＋</span> {{ t('guide.buttons') }}</p><p><span aria-hidden="true">⌨</span> {{ t('guide.shortcuts') }}</p></div><div class="tip"><b>{{ t('guide.tip') }}</b><p>{{ t(isSpeedy ? 'speedy.tipText' : 'guide.tipText') }}</p></div></aside>
+      </div>
+      <p class="save-note" role="status">{{ t(storageAvailable ? 'storage.saved' : 'storage.unavailable') }}</p>
+      <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
+    </main>
+    <footer><span>{{ t('brand.name') }} <span class="footer-dot">·</span> {{ t('footer.joy') }}</span><span>{{ t('footer.note') }}</span></footer>
+  </div>
+  <!-- Static bilingual fallback: scripts cannot translate content when JavaScript is disabled. -->
+  <noscript><p lang="cs">Pro spuštění Malé herny povolte JavaScript v prohlížeči.</p><p lang="en">Enable JavaScript in your browser to open Little Arcade.</p></noscript>
+</body>
+</html>

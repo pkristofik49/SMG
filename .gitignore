@@ -1,0 +1,4 @@
+.browser-*/
+tests/edge-*.html
+tests/edge-*.log
+tests/preview-*.png

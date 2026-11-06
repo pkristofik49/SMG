@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Speedy clock tests</title></head><body>
+<h1>Speedy clock tests</h1><pre id="results"></pre><script src="../js/speedy-clock.js"></script><script>
+  'use strict';
+  let failures = 0;
+  const results = [];
+  function test(name, run) { try { run(); results.push(`PASS ${name}`); } catch (error) { failures++; results.push(`FAIL ${name}: ${error.message}`); } }
+  function equal(actual, expected) { if (actual !== expected) throw new Error(`Expected ${expected}, got ${actual}`); }
+  test('Starts with two paused seconds', () => { let now = 0; const clock = createSpeedyClock(() => now); now = 2000; equal(clock.remaining(), 2000); });
+  test('A move at 250 ms leaves 2750 ms', () => { let now = 0; const clock = createSpeedyClock(() => now); clock.start(); now = 250; equal(clock.reward(), true); equal(clock.remaining(), 2750); });
+  test('Fast moves accumulate time with a one-second bonus per move', () => { const clock = createSpeedyClock(() => 0); clock.start(); clock.reward(); clock.reward(); equal(clock.remaining(), 4000); });
+  test('Expiration is exact and late moves earn no time', () => { let now = 0; const clock = createSpeedyClock(() => now); clock.start(); now = 2000; equal(clock.reward(), false); equal(clock.remaining(), 0); now = 5000; equal(clock.remaining(), 0); });
+  test('Pausing preserves the budget and resuming uses it', () => { let now = 0; const clock = createSpeedyClock(() => now); clock.start(); now = 300; equal(clock.pause(), 1700); now = 2000; equal(clock.remaining(), 1700); clock.start(); now = 2200; equal(clock.remaining(), 1500); });
+  test('An expired clock cannot be restarted without a reset', () => { let now = 0; const clock = createSpeedyClock(() => now); clock.start(); now = 2000; clock.pause(); clock.start(); equal(clock.remaining(), 0); });
+  test('Restoring a saved budget does not grant extra time', () => { let now = 0; const clock = createSpeedyClock(() => now); clock.reset(320); clock.start(); now = 100; equal(clock.remaining(), 220); });
+  test('A fresh reset grants exactly two seconds', () => { const clock = createSpeedyClock(() => 0); clock.reward(); clock.reset(); equal(clock.remaining(), 2000); });
+  results.push(`\n${results.length - failures}/${results.length} tests passed.`);
+  document.getElementById('results').textContent = results.join('\n'); document.title = failures ? 'FAIL clock' : 'PASS clock';
+</script></body></html>
