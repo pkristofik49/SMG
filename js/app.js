@@ -6,6 +6,7 @@
   const SAVE_KEY = 'little-arcade.2048.v1';
   const BEST_KEY = 'little-arcade.2048.best';
   const LANGUAGE_KEY = 'little-arcade.language';
+  const PALETTE_KEY = 'little-arcade.palette';
   const GAMES = [
     { id: 'classic', hash: '#/2048', saveKey: SAVE_KEY, bestKey: BEST_KEY },
     { id: 'speedy', hash: '#/2048-speedy', saveKey: 'little-arcade.2048-speedy.v1', bestKey: 'little-arcade.2048-speedy.best' }
@@ -37,28 +38,32 @@
       const language = ref('cs');
       const languageMenuOpen = ref(false), languagePicker = ref(null), languageMenuButton = ref(null);
       const narrowViewportQuery = window.matchMedia('(max-width: 680px)');
-      let languageMenuAnimation = null, languageMenuTimer = null;
-      function cancelLanguageMenuAnimation() {
-        clearTimeout(languageMenuTimer);
-        languageMenuAnimation?.cancel(); languageMenuAnimation = null;
+      const menuAnimations = new Map();
+      function cancelOptionsMenuAnimation(element) {
+        for (const [target, state] of menuAnimations) {
+          if (element && target !== element) continue;
+          clearTimeout(state.timer); state.animation.cancel(); menuAnimations.delete(target);
+        }
       }
-      function animateLanguageMenu(element, done, entering) {
-        cancelLanguageMenuAnimation();
+      function animateOptionsMenu(element, done, entering) {
+        cancelOptionsMenuAnimation(element);
         if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) { done(); return; }
         const hidden = { opacity: 0, transform: 'translateY(-8px)' };
         const shown = { opacity: 1, transform: 'translateY(0)' };
-        languageMenuAnimation = element.animate(entering ? [hidden, shown] : [shown, hidden], {
+        const animation = element.animate(entering ? [hidden, shown] : [shown, hidden], {
           duration: 180, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both'
         });
-        languageMenuTimer = setTimeout(() => { cancelLanguageMenuAnimation(); done(); }, 180);
+        const timer = setTimeout(() => { cancelOptionsMenuAnimation(element); done(); }, 180);
+        menuAnimations.set(element, { animation, timer });
       }
-      const enterLanguageMenu = (element, done) => animateLanguageMenu(element, done, true);
-      const leaveLanguageMenu = (element, done) => animateLanguageMenu(element, done, false);
+      const enterOptionsMenu = (element, done) => animateOptionsMenu(element, done, true);
+      const leaveOptionsMenu = (element, done) => animateOptionsMenu(element, done, false);
       function closeLanguageMenu(restoreFocus = false) {
         languageMenuOpen.value = false;
         if (restoreFocus) nextTick(() => languageMenuButton.value?.focus({ preventScroll: true }));
       }
       async function toggleLanguageMenu() {
+        closePaletteMenu();
         languageMenuOpen.value = !languageMenuOpen.value;
         if (languageMenuOpen.value) {
           await nextTick();
@@ -67,6 +72,7 @@
       }
       function onLanguageOutside(event) {
         if (languageMenuOpen.value && !languagePicker.value?.contains(event.target)) closeLanguageMenu();
+        if (paletteMenuOpen.value && !palettePicker.value?.contains(event.target)) closePaletteMenu();
       }
       function onLanguageMenuKey(event) {
         if (!languageMenuOpen.value || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
@@ -87,6 +93,52 @@
       }
       function onLanguagePickerBlur(event) {
         if (!event.currentTarget.contains(event.relatedTarget)) closeLanguageMenu();
+      }
+      const palettes = ['light', 'dark', 'green', 'red', 'blue'];
+      const palette = ref('green'), paletteMenuOpen = ref(false), palettePicker = ref(null), paletteMenuButton = ref(null);
+      try {
+        const stored = localStorage.getItem(PALETTE_KEY);
+        if (palettes.includes(stored)) palette.value = stored;
+      } catch { /* Palette selection works without browser storage. */ }
+      watch(palette, value => {
+        document.documentElement.dataset.palette = value;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute('content', getComputedStyle(document.documentElement).backgroundColor);
+      }, { immediate: true });
+      function closePaletteMenu(restoreFocus = false) {
+        paletteMenuOpen.value = false;
+        if (restoreFocus) nextTick(() => paletteMenuButton.value?.focus({ preventScroll: true }));
+      }
+      async function togglePaletteMenu() {
+        closeLanguageMenu();
+        paletteMenuOpen.value = !paletteMenuOpen.value;
+        if (paletteMenuOpen.value) {
+          await nextTick();
+          palettePicker.value?.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+        }
+      }
+      function setPalette(value) {
+        if (!palettes.includes(value)) return;
+        palette.value = value;
+        closePaletteMenu(true);
+        try { localStorage.setItem(PALETTE_KEY, value); } catch { /* Retain the palette for the current page session. */ }
+      }
+      function onPalettePickerBlur(event) {
+        if (!event.currentTarget.contains(event.relatedTarget)) closePaletteMenu();
+      }
+      function onPaletteMenuKey(event) {
+        if (!paletteMenuOpen.value || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing) return;
+        const options = Array.from(palettePicker.value?.querySelectorAll('[data-palette-option]') || []);
+        const current = options.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+          event.preventDefault();
+          const step = event.key === 'ArrowDown' ? 1 : -1;
+          const index = current < 0 ? (step > 0 ? 0 : options.length - 1) : (current + step + options.length) % options.length;
+          options[index]?.focus({ preventScroll: true });
+        } else if (event.key === 'Enter' && current >= 0) {
+          event.preventDefault(); if (!event.repeat) options[current].click();
+        } else if (event.key === 'Escape') {
+          event.preventDefault(); closePaletteMenu(true);
+        }
       }
       try {
         const savedLanguage = readStored(LANGUAGE_KEY, translations.legacyStorageKeys.language);
@@ -484,6 +536,7 @@
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return;
         onLanguageMenuKey(event);
+        onPaletteMenuKey(event);
         if (event.defaultPrevented) return;
         const key = event.key.toLowerCase();
         if (key === 'l') {
@@ -550,6 +603,7 @@
         cancelGuideLayoutAnimation();
         closeLanguageMenu();
         pauseSpeedyTime();
+        closePaletteMenu();
         stopAnimation();
         const selectedGame = routeGame();
         if (page.value === 'game') {
@@ -618,7 +672,7 @@
         }, { flush: 'post', immediate: true });
       });
       onUnmounted(() => {
-        cancelLanguageMenuAnimation();
+        cancelOptionsMenuAnimation();
         cancelExpandedAnimation();
         cancelGuidePanelAnimation();
         cancelGuideLayoutAnimation();
@@ -639,7 +693,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { enterLanguageMenu, leaveLanguageMenu, cancelLanguageMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

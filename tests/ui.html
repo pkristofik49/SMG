@@ -15,7 +15,7 @@
   }
   frame.addEventListener('load', async () => {
     const win = frame.contentWindow;
-    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language'];
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette'];
     const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
     const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
     let originals;
@@ -690,6 +690,67 @@
       check('Typing L in an input does not open the language list', globe.getAttribute('aria-expanded') === 'false');
       languageInput.remove(); globe.focus(); sendKey('l', { ctrlKey: true }); await pause();
       check('Modified L shortcuts are left to the browser', globe.getAttribute('aria-expanded') === 'false');
+      win.location.hash = '#/'; await pause(220);
+      const paletteButton = doc.querySelector('.palette-menu-toggle');
+      const paletteList = doc.querySelector('.palette-options');
+      const gameBeforePalettes = win.localStorage.getItem(keys[0]);
+      const paletteBackgrounds = new Set();
+      for (const name of ['light', 'dark', 'green', 'red', 'blue']) {
+        paletteButton.click(); await pause(220);
+        check(`Palette list opens with five options for ${name}`, paletteButton.getAttribute('aria-expanded') === 'true' && paletteList.querySelectorAll('button').length === 5 && !paletteList.inert);
+        doc.querySelector(`[data-palette-option="${name}"]`).click(); await pause(220);
+        paletteBackgrounds.add(win.getComputedStyle(doc.documentElement).backgroundColor);
+        check(`Selecting ${name} applies and stores the palette`, doc.documentElement.dataset.palette === name && win.localStorage.getItem(keys[3]) === name && paletteButton.getAttribute('aria-expanded') === 'false' && doc.activeElement === paletteButton);
+      }
+      check('All five palettes have distinct page colours and preserve the game', paletteBackgrounds.size === 5 && win.localStorage.getItem(keys[0]) === gameBeforePalettes);
+      paletteButton.click(); await pause(220);
+      const beforePaletteKeys = doc.documentElement.dataset.palette;
+      sendKey('ArrowDown'); await pause();
+      check('Palette arrows move focus without changing the palette', doc.activeElement.dataset.paletteOption === 'light' && doc.documentElement.dataset.palette === beforePaletteKeys);
+      sendKey('Enter'); await pause(220);
+      check('Enter selects the focused palette', doc.documentElement.dataset.palette === 'light' && doc.activeElement === paletteButton);
+      paletteButton.click(); await pause(); sendKey('Escape'); await pause(220);
+      check('Escape closes the palette list and restores focus', paletteList.inert && win.getComputedStyle(paletteList).display === 'none' && doc.activeElement === paletteButton);
+      paletteButton.click(); await pause();
+      doc.querySelector('.language-menu-toggle').click(); await pause(220);
+      check('Opening languages closes the palette list', paletteList.inert && !doc.querySelector('.language-switch').inert);
+      paletteButton.click(); await pause(220);
+      check('Opening palettes closes the language list', !paletteList.inert && doc.querySelector('.language-switch').inert);
+      doc.body.dispatchEvent(new win.PointerEvent('pointerdown', { bubbles: true })); await pause(220);
+      check('Clicking outside closes the palette list', paletteList.inert);
+      for (const code of ['cs', 'en', 'de', 'es', 'ja', 'ar']) {
+        doc.querySelector(`[data-language="${code}"]`).click(); await pause();
+        paletteButton.click(); await pause(220);
+        check(`Palette labels are translated in ${code}`, paletteButton.title === win.ArcadeTranslations[code]['palette.change'] && Array.from(paletteList.querySelectorAll('button')).every(button => button.textContent.trim() === win.ArcadeTranslations[code][`palette.${button.dataset.paletteOption}`]));
+        sendKey('Escape'); await pause(220);
+      }
+      paletteButton.click(); await pause(); doc.querySelector('[data-palette-option="dark"]').click(); await pause(220);
+      for (const route of ['#/2048', '#/2048-speedy']) {
+        win.location.hash = route; await pause(220);
+        check(`Dark palette applies to the game and board on ${route}`, doc.documentElement.dataset.palette === 'dark' && win.getComputedStyle(doc.querySelector('.board')).backgroundColor === 'rgb(60, 77, 97)');
+      }
+      win.location.hash = '#/'; await pause(220);
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        paletteButton.click(); await pause(220);
+        const bounds = paletteList.getBoundingClientRect();
+        check(`Palette list fits the RTL viewport at ${width}px`, bounds.left >= 0 && bounds.right <= win.innerWidth + 1 && doc.documentElement.scrollWidth <= win.innerWidth);
+        sendKey('Escape'); await pause(220);
+      }
+      await reload(); doc = frame.contentDocument;
+      check('The selected dark palette survives a page reload', doc.documentElement.dataset.palette === 'dark' && win.getComputedStyle(doc.documentElement).colorScheme === 'dark');
+      win.localStorage.setItem(keys[3], 'unknown'); await reload(); doc = frame.contentDocument;
+      check('An invalid saved palette falls back to the original green', doc.documentElement.dataset.palette === 'green');
+      const paletteMatchMedia = win.matchMedia;
+      const paletteSetItem = win.Storage.prototype.setItem;
+      try {
+        win.matchMedia = query => query === '(prefers-reduced-motion: reduce)' ? { matches: true } : paletteMatchMedia.call(win, query);
+        doc.querySelector('.palette-menu-toggle').click(); await pause();
+        check('Palette menu respects reduced motion', doc.querySelector('.palette-options').getAnimations().length === 0 && !doc.querySelector('.palette-options').inert);
+        win.Storage.prototype.setItem = () => { throw new Error('Storage unavailable'); };
+        doc.querySelector('[data-palette-option="red"]').click(); await pause();
+        check('Palette selection works when storage is unavailable', doc.documentElement.dataset.palette === 'red' && doc.querySelector('.palette-options').inert);
+      } finally { win.matchMedia = paletteMatchMedia; win.Storage.prototype.setItem = paletteSetItem; }
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();
