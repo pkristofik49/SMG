@@ -18,6 +18,7 @@
   <script defer src="js/speedy-clock.js"></script>
   <script defer src="js/translations.js"></script>
   <script defer src="js/audio.js"></script>
+  <script defer src="js/version.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/pwa.js"></script>
 </head>
@@ -131,7 +132,7 @@
       <p class="save-note" role="status">{{ t(storageAvailable ? 'storage.saved' : 'storage.unavailable') }}</p>
       <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
     </main>
-    <footer><span>{{ t('brand.name') }} <span class="footer-dot">·</span> {{ t('footer.joy') }}</span><span>{{ t('footer.note') }}</span></footer>
+    <footer><span>{{ t('brand.name') }} <span class="footer-dot">·</span> {{ t('footer.joy') }}</span><span>{{ t('footer.note') }}</span><span v-if="page === 'menu'" class="footer-version">{{ t('footer.version') }} <bdi>{{ appVersion }}</bdi></span></footer>
   </div>
   <!-- Static bilingual fallback: scripts cannot translate content when JavaScript is disabled. -->
   <noscript><p lang="cs">Pro spuštění Malé herny povolte JavaScript v prohlížeči.</p><p lang="en">Enable JavaScript in your browser to open Little Arcade.</p></noscript>

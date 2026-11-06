@@ -29,7 +29,7 @@
       check('Manifest includes regular and maskable installation icons', manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
       const cache = await caches.open(`${prefix}v1`);
       const resources = await cache.keys();
-      check('The entire application shell is precached', resources.length === 15 && (await cache.match(new URL('js/app.js', root)))?.ok);
+      check('The entire application shell is precached', resources.length === 16 && (await cache.match(new URL('js/app.js', root)))?.ok && (await cache.match(new URL('js/version.js', root)))?.ok);
       const unrelated = 'pwa-test-unrelated'; await caches.open(unrelated);
       const keys = ['little-arcade.2048.v1', 'little-arcade.2048-speedy.v1'];
       const initial = keys.map(key => frame.contentWindow.localStorage.getItem(key));

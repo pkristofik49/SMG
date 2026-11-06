@@ -20,7 +20,13 @@ The first complete online load downloads the application shell. Once the service
 
 `sw.js` precaches the entire release and serves application files from that cache. A new release installs in the background and waits until all windows and browser tabs using the old release close. Reopening then uses the new version; there is no forced reload during a game. An incomplete download fails installation and preserves the working release. Cleanup removes only this application's old release caches within its own scope, and leaves local storage unchanged. On reconnecting or returning to a visible app, the registration checks for updates.
 
-Whenever a file listed in `SHELL` changes, bump `RELEASE` in `sw.js` in the same deployment. Add any new offline assets to `SHELL`. Keep versions unique and do not activate updates with `skipWaiting()` during a running game. This maintenance rule is also recorded in `AGENTS.md`.
+Every commit updates `RELEASE` in `sw.js` to match the application version, producing a complete new offline cache. Add any new offline assets to `SHELL`. Keep versions unique and do not activate updates with `skipWaiting()` during a running game. This maintenance rule is also recorded in `AGENTS.md`.
+
+## Application version
+
+The main-menu footer shows the version from `js/version.js`, starting at **1.000**. Each subsequent commit increases it by **0.001**: 1.001, 1.002, and so on (1.999 becomes 2.000). The label follows the selected language; the version itself retains its three-digit format.
+
+After cloning, enable the tracked hook with `git config core.hooksPath .githooks`. The hook uses Windows PowerShell, derives the next number from the committed HEAD, and stages only `js/version.js` and the matching release in `sw.js`. Stage any edits to those files before committing; otherwise the hook stops instead of staging unrelated work. A failed commit can be retried without skipping version numbers. This checkout already has the hook enabled. Commits made through GitHub's web interface or another checkout without the hook require the same version update manually. Run `.\tests\versioning.ps1` to verify initial numbering, increments, and rejected-commit retries in an isolated temporary repository.
 
 ## Controls and behavior
 

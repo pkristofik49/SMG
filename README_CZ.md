@@ -20,7 +20,13 @@ První úplné načtení online stáhne soubory aplikace. Po dokončení instala
 
 `sw.js` předem uloží celou verzi a soubory aplikace načítá z této cache. Nová verze se instaluje na pozadí a čeká, dokud se nezavřou všechna okna aplikace a karty prohlížeče používající starou verzi. Při dalším otevření se použije nová verze; během hry nedochází k vynucenému obnovení. Neúplné stažení instalaci přeruší a zachová funkční verzi. Úklid odstraňuje jen staré cache této aplikace v jejím rozsahu a nemění místní úložiště. Po obnovení připojení nebo návratu do viditelné aplikace registrace ověří aktualizace.
 
-Při změně souboru uvedeného v `SHELL` zvyšte při stejném nasazení `RELEASE` v `sw.js`. Nové offline soubory přidejte do `SHELL`. Verze neopakujte a během rozehrané hry nevynucujte aktivaci přes `skipWaiting()`. Pravidlo údržby je uvedeno také v `AGENTS.md`.
+Každý commit aktualizuje `RELEASE` v `sw.js` podle verze aplikace a vytvoří tak úplnou novou offline cache. Nové offline soubory přidejte do `SHELL`. Verze neopakujte a během rozehrané hry nevynucujte aktivaci přes `skipWaiting()`. Pravidlo údržby je uvedeno také v `AGENTS.md`.
+
+## Verze aplikace
+
+Patička hlavního menu zobrazuje verzi z `js/version.js`, počínaje **1.000**. Každý další commit ji zvýší o **0.001**: 1.001, 1.002 a dále (po 1.999 následuje 2.000). Popisek odpovídá vybranému jazyku; samotné číslo si zachovává formát se třemi číslicemi za tečkou.
+
+Po naklonování zapněte verzovaný hook příkazem `git config core.hooksPath .githooks`. Hook používá Windows PowerShell, odvodí další číslo z uloženého HEAD a připraví ke commitu jen `js/version.js` a odpovídající verzi v `sw.js`. Případné úpravy těchto souborů nejprve připravte ke commitu; jinak se hook zastaví, aby nepřidal nesouvisející práci. Neúspěšný commit lze opakovat bez přeskočení čísla. V této pracovní kopii už je hook zapnutý. Commity přes webové rozhraní GitHubu nebo z jiné kopie bez hooku vyžadují stejnou aktualizaci verze ručně. Příkaz `.\tests\versioning.ps1` ověří první číslo, zvyšování a opakování odmítnutého commitu v odděleném dočasném repozitáři.
 
 ## Ovládání a chování
 

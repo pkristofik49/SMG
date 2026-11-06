@@ -124,6 +124,7 @@
       'announcement.points.other': 'Získáno {count} bodů.',
       'announcement.undo': 'Poslední tah vrácen.',
       'footer.joy': 'Pro radost ze hry.',
+      'footer.version': 'Verze',
       'footer.note': 'Bez spěchu. Jen další dobrý tah.'
     },
     en: {
@@ -234,6 +235,7 @@
       'announcement.points.other': '{count} points earned.',
       'announcement.undo': 'Last move undone.',
       'footer.joy': 'For the joy of playing.',
+      'footer.version': 'Version',
       'footer.note': 'No rush. Just one more good move.'
     },
     de: {
@@ -344,6 +346,7 @@
       'announcement.points.other': '{count} Punkte erhalten.',
       'announcement.undo': 'Letzter Zug zurückgenommen.',
       'footer.joy': 'Aus Freude am Spielen.',
+      'footer.version': 'Version',
       'footer.note': 'Keine Eile. Nur noch ein guter Zug.'
     },
     es: {
@@ -454,6 +457,7 @@
       'announcement.points.other': 'Has ganado {count} puntos.',
       'announcement.undo': 'Última jugada deshecha.',
       'footer.joy': 'Por el placer de jugar.',
+      'footer.version': 'Versión',
       'footer.note': 'Sin prisa. Solo una buena jugada más.'
     },
     ja: {
@@ -564,6 +568,7 @@
       'announcement.points.other': '{count}ポイント獲得。',
       'announcement.undo': '最後の一手を戻しました。',
       'footer.joy': '遊ぶ楽しさを、あなたに。',
+      'footer.version': 'バージョン',
       'footer.note': '焦らず、次のいい一手を。'
     },
     ar: {
@@ -680,6 +685,7 @@
       'announcement.points.other': 'حصلت على {count} نقطة.',
       'announcement.undo': 'تم التراجع عن الحركة الأخيرة.',
       'footer.joy': 'من أجل متعة اللعب.',
+      'footer.version': 'الإصدار',
       'footer.note': 'لا عجلة. فقط حركة موفقة أخرى.'
     }
   };
