@@ -58,7 +58,7 @@ Tlačítko s ikonou roztažení mezi novou hrou a knížkou přepíná obě hry 
 
 ## Barevné palety
 
-Ikona palety vedle zeměkoule nabízí světlou, tmavou, původní zelenou (výchozí), červenou a modrou. Volba platí pro menu, obě hry, jejich kameny i dialogy a ukládá se pod klíčem `little-arcade.palette`. Bez úložiště platí do obnovení stránky. Animovaný seznam podporuje šipky nahoru a dolů, Enter, Escape, kliknutí mimo i odchod zaměření klávesnicí. Otevření seznamu jazyků zavře palety a naopak. Globální ovládání zůstává dostupné v rozšířeném zobrazení.
+Ikona palety vedle zeměkoule nabízí světlou, tmavou, původní zelenou (výchozí), červenou a modrou. V každé paletě má každá hodnota kamene od 2 do 2048 vlastní barvu pozadí, také při pohybu a v náhledech her v menu. Volba platí pro menu, obě hry, jejich kameny i dialogy a ukládá se pod klíčem `little-arcade.palette`. Bez úložiště platí do obnovení stránky. Animovaný seznam podporuje šipky nahoru a dolů, Enter, Escape, kliknutí mimo i odchod zaměření klávesnicí. Otevření seznamu jazyků zavře palety a naopak. Globální ovládání zůstává dostupné v rozšířeném zobrazení.
 
 ## Zvuk
 

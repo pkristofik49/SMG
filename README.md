@@ -58,7 +58,7 @@ The expand icon between the new-game button and the book switches either game to
 
 ## Colour palettes
 
-The palette icon next to the globe offers Light, Dark, the original Green (default), Red, and Blue. The choice applies to the menu, both games, their tiles, and dialogs, and is stored under `little-arcade.palette`. Without storage, it lasts for the current page session. The animated list supports Up/Down, Enter, Escape, outside clicks, and keyboard focus leaving the picker. Opening either the language or palette list closes the other. The global controls remain available in expanded view.
+The palette icon next to the globe offers Light, Dark, the original Green (default), Red, and Blue. Every palette gives each tile value from 2 through 2048 its own background colour, including moving tiles and menu previews. The choice applies to the menu, both games, their tiles, and dialogs, and is stored under `little-arcade.palette`. Without storage, it lasts for the current page session. The animated list supports Up/Down, Enter, Escape, outside clicks, and keyboard focus leaving the picker. Opening either the language or palette list closes the other. The global controls remain available in expanded view.
 
 ## Sound
 

@@ -811,6 +811,26 @@
       win.localStorage.setItem(keys[4], '{invalid'); win.localStorage.setItem(keys[5], 'invalid');
       await reload(); doc = frame.contentDocument;
       check('Invalid preferences fall back to a playable normal view with muted sound', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false' && !!doc.querySelector('.board'));
+      const paletteBoard = [2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 0, 0, 0, 0, 0];
+      win.location.hash = '#/'; await pause();
+      win.localStorage.setItem(keys[0], JSON.stringify({ ...seeded, board: paletteBoard, won: true, continued: true }));
+      await reload(); doc = frame.contentDocument;
+      for (const name of ['green', 'light', 'dark', 'red', 'blue']) {
+        doc.querySelector('.palette-menu-toggle').click(); await pause();
+        doc.querySelector(`[data-palette-option="${name}"]`).click(); await pause(220);
+        const preview = Array.from(doc.querySelectorAll('[data-game="classic"] .mini-board>span'));
+        check(`Menu preview distinguishes tile values in ${name}`, new Set(preview.map(tile => win.getComputedStyle(tile).backgroundColor)).size === preview.length);
+        win.location.hash = '#/2048'; await pause(360);
+        const tiles = Array.from(doc.querySelectorAll('.board>.tile:not(.tile-empty)'));
+        const colours = new Map(tiles.map(tile => [tile.className.match(/tile-\d+/)[0], win.getComputedStyle(tile).backgroundColor]));
+        check(`Board distinguishes all eleven tile values in ${name}`, new Set(colours.values()).size === 11);
+        doc.querySelectorAll('.direction-pad button')[3].click(); await pause(40);
+        const moving = Array.from(doc.querySelectorAll('.moving-tile'));
+        check(`Moving tiles retain their value colours in ${name}`, moving.length > 0 && moving.every(tile => win.getComputedStyle(tile).backgroundColor === colours.get(tile.className.match(/tile-\d+/)[0])));
+        await pause(180);
+        doc.querySelector('.undo-button').click(); await pause();
+        doc.querySelector('.back-link').click(); await pause();
+      }
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

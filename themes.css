@@ -20,7 +20,7 @@ html[data-palette]:not([data-palette="green"]) :is(.coming-card,.scores>div,.top
 html[data-palette]:not([data-palette="green"]) :is(.card-art,.game-card[data-game="speedy"] .card-art){background:var(--art);color:var(--ink)}
 html[data-palette]:not([data-palette="green"]) :is(.game-card[data-game="speedy"] .card-variant,.game-card[data-game="speedy"] .card-arrow,.speedy-bolt){color:var(--green)}
 html[data-palette]:not([data-palette="green"]) :is(.board,.mini-board){background:var(--board)}
-html[data-palette]:not([data-palette="green"]) :is(.tile,.mini-board>span,.sample-back){background:var(--tile);color:var(--ink)}
+html[data-palette]:not([data-palette="green"]) :where(.tile,.mini-board>span,.sample-back){background:var(--tile);color:var(--ink)}
 html[data-palette]:not([data-palette="green"]) :is(.tile-empty,.board-animating>.tile){background:var(--empty)}
 html[data-palette]:not([data-palette="green"]) :is(.tile-4,.mini-4){background:var(--tile4)}
 html[data-palette]:not([data-palette="green"]) :is(.tile-8,.mini-8){background:var(--tile8)}
@@ -30,7 +30,8 @@ html[data-palette]:not([data-palette="green"]) :is(.tile-64,.mini-64){background
 html[data-palette]:not([data-palette="green"]) :is(.tile-128,.mini-128,.sample-front){background:var(--tile128);color:#fff}
 html[data-palette]:not([data-palette="green"]) :is(.tile-256,.mini-256){background:var(--tile256);color:#fff}
 html[data-palette]:not([data-palette="green"]) .tile-512{background:var(--tile512);color:#fff}
-html[data-palette]:not([data-palette="green"]) :is(.tile-1024,.tile-2048,.mini-2048){background:#edcf77;color:#3b351f}
+html[data-palette]:not([data-palette="green"]) .tile-1024{background:#d8bf66;color:#3b351f}
+html[data-palette]:not([data-palette="green"]) :is(.tile-2048,.mini-2048){background:#edcf77;color:#3b351f}
 html[data-palette]:not([data-palette="green"]) :is(.expanded-mode .play-page,.language-switch,.expanded-mode .game-guide){background:var(--panel)}
 @media(max-width:680px){html[data-palette]:not([data-palette="green"]) .game-guide{background:var(--panel)}}
 html[data-palette]:not([data-palette="green"]) :is(.primary-button,.language-switch button[aria-pressed="true"]){background:var(--green);color:var(--on-accent)}
