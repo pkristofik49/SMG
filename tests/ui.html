@@ -15,7 +15,7 @@
   }
   frame.addEventListener('load', async () => {
     const win = frame.contentWindow;
-    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette'];
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound'];
     const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
     const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
     let originals;
@@ -25,6 +25,7 @@
     try {
       await pause();
       originals = keys.map(key => win.localStorage.getItem(key));
+      win.localStorage.removeItem(keys[4]); win.localStorage.removeItem(keys[5]);
       legacyOriginals = legacyKeys.map(key => win.localStorage.getItem(key));
       speedyOriginals = speedyKeys.map(key => win.localStorage.getItem(key));
       let doc = frame.contentDocument;
@@ -204,7 +205,7 @@
       check('Moves stay silent after muting', tones.length === 3);
       win.AudioContext = originalAudioContext;
       await reload(); doc = frame.contentDocument;
-      check('Reload starts with sound off', doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false');
+      check('Reload preserves the muted sound setting', doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false');
       const legacyGame = JSON.stringify({ ...seeded, score: 128, moves: 7 });
       keys.forEach(key => win.localStorage.removeItem(key));
       win.localStorage.setItem(legacyKeys[0], legacyGame);
@@ -264,7 +265,8 @@
       check('Shortcuts ignore modifiers and text composition', !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts);
       doc.querySelector('.back-link').click(); await pause();
       sendKey('n'); sendKey('z'); await pause();
-      check('Game shortcuts do not act on the menu', !!doc.querySelector('.game-card') && !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts);
+      check('New-game shortcut leaves the menu alone while Z remains global', !!doc.querySelector('.game-card') && !doc.querySelector('[role="dialog"]') && win.localStorage.getItem(keys[0]) === beforeIgnoredShortcuts && doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'true');
+      doc.querySelector('.sound-button').click(); await pause();
       const blockedGame = JSON.stringify({ ...seeded, board: [2, 4, 8, 16, ...Array(12).fill(0)], moves: 3 });
       win.localStorage.setItem(keys[0], blockedGame);
       await reload(); doc = frame.contentDocument;
@@ -776,6 +778,39 @@
       }
       win.location.hash = '#/2048'; await pause();
       check('The application version is shown only in the main menu', !doc.querySelector('.footer-version'));
+      if (doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true') { sendKey('f'); await pause(360); }
+      if (doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true') { sendKey('h'); await pause(360); }
+      sendKey('f'); await pause(360); sendKey('h'); await pause(360);
+      const savedViews = JSON.parse(win.localStorage.getItem(keys[4]));
+      check('View preferences are stored immediately without returning to the menu', savedViews.classic.expanded && savedViews.classic.guideVisible && !savedViews.classic.previousGuideVisible);
+      const classicBeforeSettingsReload = win.localStorage.getItem(keys[0]);
+      await reload(); doc = frame.contentDocument; await pause(360);
+      check('A direct reload restores fullscreen and its help state', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true' && win.localStorage.getItem(keys[0]) === classicBeforeSettingsReload);
+      sendKey('f'); await pause(360);
+      check('Leaving restored fullscreen recovers the saved normal help state', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false');
+      doc.querySelector('.back-link').click(); await pause();
+      await reload(); doc = frame.contentDocument;
+      check('Reloading the menu keeps the normal menu layout', !doc.querySelector('#app').classList.contains('expanded-mode'));
+      win.location.hash = '#/2048'; await pause(360);
+      check('Reopening after a menu reload preserves normal view and hidden help', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false');
+      doc.querySelector('.back-link').click(); await pause();
+      win.location.hash = '#/2048-speedy'; await pause(360);
+      check('Speedy keeps its own saved fullscreen preference', doc.querySelector('#app').classList.contains('expanded-mode'));
+      win.AudioContext = testAudioContext;
+      if (doc.querySelector('.sound-button').getAttribute('aria-pressed') !== 'true') { doc.querySelector('.sound-button').click(); await pause(); }
+      check('Enabling global sound persists the choice', win.localStorage.getItem(keys[5]) === 'true');
+      await reload(); doc = frame.contentDocument;
+      check('Reload restores the sound-on preference before interaction', doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'true');
+      win.AudioContext = testAudioContext;
+      const contextsBeforeGesture = audioContexts;
+      doc.body.dispatchEvent(new win.PointerEvent('pointerdown', { bubbles: true })); await pause();
+      check('A first interaction initializes restored audio without toggling it off', audioContexts === contextsBeforeGesture + 1 && doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'true');
+      doc.querySelector('.sound-button').click(); await pause();
+      await reload(); doc = frame.contentDocument;
+      check('Sound-off also persists across reloads', doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false' && win.localStorage.getItem(keys[5]) === 'false');
+      win.localStorage.setItem(keys[4], '{invalid'); win.localStorage.setItem(keys[5], 'invalid');
+      await reload(); doc = frame.contentDocument;
+      check('Invalid preferences fall back to a playable normal view with muted sound', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.sound-button').getAttribute('aria-pressed') === 'false' && !!doc.querySelector('.board'));
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

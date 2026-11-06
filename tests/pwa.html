@@ -33,11 +33,17 @@
       const unrelated = 'pwa-test-unrelated'; await caches.open(unrelated);
       const keys = ['little-arcade.2048.v1', 'little-arcade.2048-speedy.v1'];
       const initial = keys.map(key => frame.contentWindow.localStorage.getItem(key));
+      frame.contentWindow.location.hash = '#/2048';
+      await until(() => frame.contentDocument.querySelector('.fullscreen-button'));
+      frame.contentDocument.querySelector('.fullscreen-button').click();
+      await until(() => frame.contentDocument.querySelector('#app').classList.contains('expanded-mode'));
+      frame.contentWindow.localStorage.setItem('little-arcade.sound', 'true');
       await control('offline');
       check('The test server is unavailable for application requests', (await fetch(new URL('not-cached.txt', root))).status === 503);
       await loadApp('./?offline=1#/2048');
       await until(() => frame.contentDocument.querySelector('.board'));
       check('Classic starts offline through a fresh navigation with a query and hash', frame.contentDocument.querySelectorAll('.tile').length === 16 && frame.contentDocument.querySelector('.game-variant').textContent === 'classic');
+      check('Fullscreen and global sound preferences restore during an offline launch', frame.contentDocument.querySelector('#app').classList.contains('expanded-mode') && frame.contentDocument.querySelector('.sound-button').getAttribute('aria-pressed') === 'true');
       const board = JSON.parse(initial[0]).board;
       const directionIndex = ['left', 'up', 'down', 'right'].findIndex(direction => frame.contentWindow.Game2048.move(board, direction).changed);
       frame.contentDocument.querySelectorAll('.direction-pad button')[directionIndex].click();

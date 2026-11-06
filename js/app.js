@@ -7,6 +7,8 @@
   const BEST_KEY = 'little-arcade.2048.best';
   const LANGUAGE_KEY = 'little-arcade.language';
   const PALETTE_KEY = 'little-arcade.palette';
+  const VIEWS_KEY = 'little-arcade.views';
+  const SOUND_KEY = 'little-arcade.sound';
   const GAMES = [
     { id: 'classic', hash: '#/2048', saveKey: SAVE_KEY, bestKey: BEST_KEY },
     { id: 'speedy', hash: '#/2048-speedy', saveKey: 'little-arcade.2048-speedy.v1', bestKey: 'little-arcade.2048-speedy.best' }
@@ -247,6 +249,7 @@
         cancelGuideLayoutAnimation();
         const version = guideLayoutVersion;
         guideVisible.value = !guideVisible.value;
+        rememberGameView();
         await nextTick();
         if (version !== guideLayoutVersion || !area?.isConnected || !before || expanded.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !area.animate) return;
         const after = area.getBoundingClientRect();
@@ -261,6 +264,21 @@
       }
       let previousGuideVisible = true, expandedObserver;
       const gameViews = Object.create(null);
+      let viewReady = false;
+      try {
+        const saved = JSON.parse(localStorage.getItem(VIEWS_KEY));
+        for (const game of games) {
+          const view = saved?.[game.id];
+          if (view && typeof view.expanded === 'boolean' && typeof view.guideVisible === 'boolean' && typeof view.previousGuideVisible === 'boolean') {
+            gameViews[game.id] = { expanded: view.expanded, guideVisible: view.guideVisible, previousGuideVisible: view.previousGuideVisible };
+          }
+        }
+      } catch { /* Invalid or unavailable settings use the default view. */ }
+      function rememberGameView() {
+        if (!viewReady || page.value !== 'game') return;
+        gameViews[activeGame.value] = { expanded: expanded.value, guideVisible: guideVisible.value, previousGuideVisible };
+        try { localStorage.setItem(VIEWS_KEY, JSON.stringify(gameViews)); } catch { /* Keep view settings for the current page session. */ }
+      }
       function sizeExpandedBoard() {
         if (!expanded.value || !playPage.value) return;
         const main = playPage.value;
@@ -290,6 +308,7 @@
         expanded.value = !expanded.value;
         if (expanded.value) { previousGuideVisible = guideVisible.value; guideVisible.value = false; }
         else guideVisible.value = previousGuideVisible;
+        rememberGameView();
         // Let responsive dimensions settle before inverting the new board position.
         for (let step = 0; step < 3; step++) {
           await nextTick();
@@ -331,12 +350,15 @@
       const sound = createArcadeAudio();
       const soundEnabled = ref(false);
       const audioAvailable = Boolean(window.AudioContext || window.webkitAudioContext);
-      let soundToggleId = 0;
+      try { soundEnabled.value = audioAvailable && localStorage.getItem(SOUND_KEY) === 'true'; }
+      catch { /* Sound remains off when no preference can be read. */ }
       async function toggleSound() {
-        const id = ++soundToggleId;
         soundEnabled.value = !soundEnabled.value;
-        const enabled = await sound.setEnabled(soundEnabled.value);
-        if (id === soundToggleId) soundEnabled.value = enabled;
+        try { localStorage.setItem(SOUND_KEY, String(soundEnabled.value)); } catch { /* Retain the choice for the current page session. */ }
+        await sound.setEnabled(soundEnabled.value);
+      }
+      function onSoundInteraction(event) {
+        if (soundEnabled.value && !event.repeat) sound.setEnabled(true);
       }
       function onVisibilityChange() { if (document.hidden) sound.stop(); }
       const score = ref(0), best = ref(0), moves = ref(0);
@@ -607,9 +629,8 @@
         closePaletteMenu();
         stopAnimation();
         const selectedGame = routeGame();
-        if (page.value === 'game') {
-          gameViews[activeGame.value] = { expanded: expanded.value, guideVisible: guideVisible.value, previousGuideVisible };
-        }
+        rememberGameView();
+        viewReady = false;
         page.value = selectedGame ? 'game' : 'menu';
         if (!selectedGame) expanded.value = false;
         if (selectedGame && selectedGame.id !== activeGame.value) activateGame(selectedGame.id);
@@ -624,6 +645,7 @@
         await nextTick();
         window.scrollTo(0, 0);
         updateGuidePosition();
+        viewReady = true;
         if (page.value === 'game') { if (overlay.value) dialogPrimary.value?.focus(); else focusBoard(); }
         else document.getElementById('menu-title')?.focus({ preventScroll: true });
         resumeSpeedyTime();
@@ -651,6 +673,8 @@
         window.addEventListener('hashchange', navigate);
         window.addEventListener('keydown', onKey);
         document.addEventListener('pointerdown', onLanguageOutside);
+        document.addEventListener('pointerdown', onSoundInteraction, true);
+        document.addEventListener('keydown', onSoundInteraction, true);
         document.addEventListener('keydown', onLanguageMenuKey);
         document.addEventListener('scroll', updateGuidePosition, { passive: true });
         document.addEventListener('visibilitychange', onVisibilityChange);
@@ -689,6 +713,8 @@
         window.visualViewport?.removeEventListener('resize', onAnimationViewportResize);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         document.removeEventListener('pointerdown', onLanguageOutside);
+        document.removeEventListener('pointerdown', onSoundInteraction, true);
+        document.removeEventListener('keydown', onSoundInteraction, true);
         document.removeEventListener('keydown', onLanguageMenuKey);
         document.removeEventListener('scroll', updateGuidePosition);
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
