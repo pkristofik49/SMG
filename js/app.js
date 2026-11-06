@@ -99,6 +99,24 @@
       const guideVisible = ref(true);
       const expanded = ref(false), expandedBoardSize = ref(500), playPage = ref(null);
       const guideLeaveStyle = ref({});
+      let expandedAnimations = [], expandedAnimationTimer = null, expandedAnimationVersion = 0;
+      let animationViewportWidth = window.innerWidth, animationViewportHeight = window.innerHeight;
+      function rememberAnimationViewport() {
+        animationViewportWidth = window.innerWidth; animationViewportHeight = window.innerHeight;
+      }
+      function onAnimationViewportResize() {
+        // Scrollbars changing during a layout transition are not a window resize.
+        if (window.innerWidth !== animationViewportWidth || window.innerHeight !== animationViewportHeight) {
+          cancelExpandedAnimation(); cancelGuideLayoutAnimation();
+        }
+        rememberAnimationViewport();
+      }
+      function cancelExpandedAnimation() {
+        expandedAnimationVersion++;
+        clearTimeout(expandedAnimationTimer);
+        expandedAnimations.forEach(animation => animation.cancel());
+        expandedAnimations = [];
+      }
       let guideLayoutAnimation = null, guideLayoutTimer = null, guideLayoutVersion = 0;
       let guidePanelAnimation = null, guidePanelTimer = null;
       function cancelGuidePanelAnimation() {
@@ -131,6 +149,8 @@
         guideLayoutAnimation?.cancel(); guideLayoutAnimation = null;
       }
       async function toggleGuide() {
+        rememberAnimationViewport();
+        cancelExpandedAnimation();
         const area = playPage.value?.querySelector('.game-area');
         const before = area?.getBoundingClientRect();
         cancelGuideLayoutAnimation();
@@ -166,11 +186,44 @@
         expandedBoardSize.value = Math.max(1, Math.floor(Math.min(width, height)));
       }
       async function toggleExpanded() {
+        rememberAnimationViewport();
+        const main = playPage.value;
+        const boardWrap = main?.querySelector('.board-wrap');
+        const before = boardWrap?.getBoundingClientRect();
+        cancelExpandedAnimation();
+        const version = expandedAnimationVersion;
         cancelGuideLayoutAnimation();
+        stopAnimation();
+        if (!overlay.value) checkEnd();
         expanded.value = !expanded.value;
         if (expanded.value) { previousGuideVisible = guideVisible.value; guideVisible.value = false; }
         else guideVisible.value = previousGuideVisible;
-        await nextTick(); sizeExpandedBoard(); focusBoard();
+        // Let responsive dimensions settle before inverting the new board position.
+        for (let step = 0; step < 3; step++) {
+          await nextTick();
+          if (version !== expandedAnimationVersion) return;
+          sizeExpandedBoard();
+        }
+        await nextTick();
+        if (version !== expandedAnimationVersion || !boardWrap?.isConnected) return;
+        if (before && boardWrap.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          const after = boardWrap.getBoundingClientRect();
+          if (before.width > 0 && after.width > 0) {
+            const scale = before.width / after.width;
+            expandedAnimations.push(boardWrap.animate([
+              { transformOrigin: '0 0', transform: `translate(${before.left - after.left}px, ${before.top - after.top}px) scale(${scale})` },
+              { transformOrigin: '0 0', transform: 'translate(0, 0) scale(1)' }
+            ], { duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)' }));
+            const heading = main.querySelector('.game-heading');
+            if (heading) expandedAnimations.push(heading.animate([
+              { opacity: 0.45, transform: 'translateY(6px)' }, { opacity: 1, transform: 'translateY(0)' }
+            ], { duration: 280, easing: 'ease-out' }));
+            expandedAnimationTimer = setTimeout(() => {
+              if (version === expandedAnimationVersion) cancelExpandedAnimation();
+            }, 280);
+          }
+        }
+        focusBoard();
       }
       watch([expanded, isSpeedy, language], async () => {
         document.getElementById('app').classList.toggle('expanded-mode', expanded.value);
@@ -333,6 +386,8 @@
         if (moves.value) overlay.value = 'restart'; else newGame();
       }
       function move(direction) {
+        // Read tile coordinates only after a view transition has been settled.
+        cancelExpandedAnimation();
         syncSpeedyTime();
         if (overlay.value || page.value !== 'game') return;
         if (animating.value) { queuedDirection = direction; return; }
@@ -441,6 +496,7 @@
         move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? 'right' : 'left' : dy > 0 ? 'down' : 'up');
       }
       async function navigate() {
+        cancelExpandedAnimation();
         cancelGuideLayoutAnimation();
         closeLanguageMenu();
         pauseSpeedyTime();
@@ -476,8 +532,9 @@
         activateGame(activeGame.value);
         expandedObserver = new ResizeObserver(sizeExpandedBoard);
         window.addEventListener('resize', sizeExpandedBoard);
-        window.addEventListener('resize', cancelGuideLayoutAnimation);
+        window.addEventListener('resize', onAnimationViewportResize);
         window.visualViewport?.addEventListener('resize', sizeExpandedBoard);
+        window.visualViewport?.addEventListener('resize', onAnimationViewportResize);
         window.addEventListener('hashchange', navigate);
         window.addEventListener('keydown', onKey);
         document.addEventListener('pointerdown', onLanguageOutside);
@@ -503,6 +560,7 @@
         }, { flush: 'post', immediate: true });
       });
       onUnmounted(() => {
+        cancelExpandedAnimation();
         cancelGuidePanelAnimation();
         cancelGuideLayoutAnimation();
         pauseSpeedyTime(); clearInterval(clockInterval);
@@ -512,8 +570,9 @@
         sound.dispose();
         expandedObserver?.disconnect();
         window.removeEventListener('resize', sizeExpandedBoard);
-        window.removeEventListener('resize', cancelGuideLayoutAnimation);
+        window.removeEventListener('resize', onAnimationViewportResize);
         window.visualViewport?.removeEventListener('resize', sizeExpandedBoard);
+        window.visualViewport?.removeEventListener('resize', onAnimationViewportResize);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         document.removeEventListener('pointerdown', onLanguageOutside);
         document.removeEventListener('keydown', onLanguageMenuKey);

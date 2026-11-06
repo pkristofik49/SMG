@@ -441,7 +441,7 @@
       const normalBoardWidth = doc.querySelector('.board').getBoundingClientRect().width;
       const originalHelp = doc.querySelector('.guide-toggle').getAttribute('aria-expanded');
       check('Window mode toggle sits between new game and help', doc.querySelector('.new-game-button').nextElementSibling === doc.querySelector('.fullscreen-button') && doc.querySelector('.fullscreen-button').nextElementSibling === doc.querySelector('.guide-toggle'));
-      doc.querySelector('.fullscreen-button').click(); await pause(150);
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
       check('Expanded view fills the window and enlarges the board', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true' && doc.querySelector('.board').getBoundingClientRect().width > normalBoardWidth && win.getComputedStyle(doc.querySelector('.site-header')).display === 'none');
       check('Expanded view preserves game state', win.localStorage.getItem(keys[0]) === beforeExpandedSave);
       for (const [width, height] of [[1440,1100], [768,1024], [390,844], [844,390], [320,568]]) {
@@ -456,7 +456,7 @@
       win.localStorage.setItem(speedyKeys[0], JSON.stringify({ ...timedGame, remainingMs: 2000, timeBudgetMs: 2000, moves: 0, timerStarted: false }));
       await reload(); doc = frame.contentDocument;
       doc.querySelector('[data-game="speedy"]').click(); await pause();
-      doc.querySelector('.fullscreen-button').click(); await pause(150);
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
       for (const [width, height] of [[1440,1100], [390,844], [844,390]]) {
         frame.style.width = `${width}px`; frame.style.height = `${height}px`; await pause(180); win.dispatchEvent(new win.Event('resize')); await pause(60);
         const bounds = doc.querySelector('.board').getBoundingClientRect();
@@ -537,6 +537,29 @@
         check('Reduced motion restores help immediately', win.getComputedStyle(doc.querySelector('.game-guide')).display !== 'none' && doc.querySelector('.game-guide').getAnimations().length === 0);
       } finally { win.matchMedia = guideMatchMedia; }
       check('Help animations preserve the game', win.localStorage.getItem(speedyKeys[0]) === beforeGuideAnimation);
+      const beforeViewAnimation = win.localStorage.getItem(speedyKeys[0]);
+      doc.querySelector('.fullscreen-button').click(); await pause(40);
+      const animatedViewBoard = doc.querySelector('.board').getBoundingClientRect();
+      check('Expanding animates the board and score heading', doc.querySelector('.board-wrap').getAnimations().length > 0 && doc.querySelector('.game-heading').getAnimations().length > 0);
+      check('The board stays square during the view transition', Math.abs(animatedViewBoard.width - animatedViewBoard.height) < 1);
+      await pause(320);
+      check('Expansion finishes without stale visual transforms', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.board-wrap').getAnimations().length === 0);
+      doc.querySelector('.fullscreen-button').click(); await pause(40);
+      check('Restoring normal view also animates the board', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.board-wrap').getAnimations().length > 0);
+      sendKey('f'); await pause(20);
+      sendKey('f'); await pause(360);
+      check('Rapid F presses settle into the final view without stale animation', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.board-wrap').getAnimations().length === 0 && win.localStorage.getItem(speedyKeys[0]) === beforeViewAnimation);
+      const viewMatchMedia = win.matchMedia;
+      try {
+        win.matchMedia = query => query === '(prefers-reduced-motion: reduce)' ? { matches: true } : viewMatchMedia.call(win, query);
+        doc.querySelector('.fullscreen-button').click(); await pause();
+        check('Reduced motion expands the view immediately', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.board-wrap').getAnimations().length === 0);
+        doc.querySelector('.fullscreen-button').click(); await pause();
+        check('Reduced motion restores normal view immediately', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.board-wrap').getAnimations().length === 0);
+      } finally { win.matchMedia = viewMatchMedia; }
+      doc.querySelector('.fullscreen-button').click(); await pause(40);
+      doc.querySelector('.direction-pad button').click(); await pause(220);
+      check('Playing during a view transition settles it before moving tiles', doc.querySelector('.board-wrap').getAnimations().length === 0 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).moves === 1 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).score === 68);
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();
