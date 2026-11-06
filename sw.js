@@ -1,12 +1,12 @@
 'use strict';
 
 // The pre-commit hook keeps the cache release aligned with the application version.
-const RELEASE = '1.004';
+const RELEASE = '1.005';
 const CACHE_PREFIX = `little-arcade:${self.registration.scope}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
 const appUrl = path => new URL(path, self.registration.scope).href;
 const SHELL = [
-  './index.html', './styles.css', './themes.css', './manifest.webmanifest',
+  './index.html', './styles.css', './themes.css', './manifest.webmanifest', './commit.json',
   './vendor/vue.global.prod.js', './js/game2048.js', './js/speedy-clock.js',
   './js/translations.js', './js/audio.js', './js/version.js', './js/app.js', './js/pwa.js',
   './icons/icon-192.png', './icons/icon-512.png', './icons/maskable-512.png',

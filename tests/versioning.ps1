@@ -9,7 +9,7 @@ git -C $fixture config core.autocrlf false
 [IO.File]::WriteAllText((Join-Path $fixture 'seed.txt'), 'Initial fixture')
 git -C $fixture add seed.txt
 git -C $fixture commit --quiet -m 'Initialize test fixture'
-foreach ($relative in @('js/version.js', 'sw.js', '.githooks/pre-commit', 'scripts/update-version.ps1')) {
+foreach ($relative in @('js/version.js', 'sw.js', 'commit.json', '.githooks/pre-commit', 'scripts/update-version.ps1')) {
     $target = Join-Path $fixture $relative
     $null = [IO.Directory]::CreateDirectory([IO.Path]::GetDirectoryName($target))
     [IO.File]::Copy((Join-Path $root $relative), $target)
@@ -41,7 +41,7 @@ if ([IO.File]::ReadAllText((Join-Path $fixture 'js/version.js')) -notmatch "'1.0
 if (git -C $fixture status --porcelain) { throw 'Versioning left uncommitted changes' }
 'PASS Retried commit increments exactly once and leaves a clean tree'
 
-$versionData = [IO.File]::ReadAllText((Join-Path $fixture 'js/version.js'))
-if ($versionData -notmatch 'ArcadeCommit = (\d+);') { throw 'Commit number was not generated' }
-if ([long]$Matches[1] -ne [long](git -C $fixture rev-list --count HEAD)) { throw 'Displayed commit count does not match Git history' }
-'PASS Generated commit number matches the committed Git history'
+$metadata = [IO.File]::ReadAllText((Join-Path $fixture 'commit.json')) -replace '^---[\s\S]*?---\s*', ''
+if (($metadata | ConvertFrom-Json).version -ne '1.002') { throw 'Deployment metadata version does not match the application' }
+if (!$metadata.Contains('{{ site.github.build_revision }}')) { throw 'The deployment must supply the actual source commit ID' }
+'PASS Deployment metadata follows the version and retains the source commit placeholder'

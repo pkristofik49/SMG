@@ -27,7 +27,16 @@
   createApp({
     setup() {
       const appVersion = ArcadeVersion;
-      const appCommit = ArcadeCommit;
+      const appCommit = ref('');
+      async function loadCommitId() {
+        try {
+          const response = await fetch(new URL('commit.json', document.baseURI));
+          if (!response.ok) return;
+          const text = await response.text();
+          const metadata = JSON.parse(text.replace(/^---[\s\S]*?---\s*/, ''));
+          if (metadata.version === appVersion && /^[0-9a-f]{40}$/.test(metadata.commit)) appCommit.value = metadata.commit.slice(0, 7);
+        } catch { /* Keep the version visible when deployment metadata is unavailable. */ }
+      }
       const page = ref(routeGame() ? 'game' : 'menu');
       const games = GAMES;
       const activeGame = ref(routeGame()?.id || 'classic');
@@ -654,6 +663,7 @@
       watch(overlay, value => { if (value) pauseSpeedyTime(); else resumeSpeedyTime(); }, { flush: 'sync' });
       watch(overlay, async value => { if (value) { await nextTick(); dialogPrimary.value?.focus({ preventScroll: true }); } });
       onMounted(() => {
+        loadCommitId();
         for (const game of games) {
           let saved = null, record = 0;
           try {

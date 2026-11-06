@@ -33,10 +33,16 @@ try {
                 '.js' { 'text/javascript; charset=utf-8' }
                 '.css' { 'text/css; charset=utf-8' }
                 '.webmanifest' { 'application/manifest+json; charset=utf-8' }
+                '.json' { 'application/json; charset=utf-8' }
                 '.png' { 'image/png' }
                 default { 'application/octet-stream' }
             }
-            if ($relative -eq 'sw.js') {
+            if ($relative -eq 'commit.json') {
+                $metadata = [IO.File]::ReadAllText($filePath) -replace '^---[\s\S]*?---\s*', ''
+                $hash = git -C $projectRoot rev-parse HEAD
+                $metadata = $metadata.Replace('{{ site.github.build_revision }}', $hash)
+                $body = [Text.Encoding]::UTF8.GetBytes($metadata)
+            } elseif ($relative -eq 'sw.js') {
                 $worker = [regex]::Replace([IO.File]::ReadAllText($filePath), "const RELEASE = '[^']+';", "const RELEASE = '$release';")
                 $body = [Text.Encoding]::UTF8.GetBytes($worker)
             } else { $body = [IO.File]::ReadAllBytes($filePath) }

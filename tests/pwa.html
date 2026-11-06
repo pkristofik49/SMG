@@ -23,13 +23,16 @@
       await control('online'); await control('release?version=v1');
       await loadApp('./');
       await until(async () => { registration = await navigator.serviceWorker.getRegistration(root.href); return registration?.active?.state === 'activated' && frame.contentWindow.navigator.serviceWorker.controller; });
+      await until(() => frame.contentDocument.querySelector('.footer-commit'));
+      const commitMetadata = await (await fetch(new URL('commit.json', root))).json();
+      check('Footer shows the actual seven-character deployment commit ID', frame.contentDocument.querySelector('.footer-commit').textContent === commitMetadata.commit.slice(0, 7) && /^[0-9a-f]{40}$/.test(commitMetadata.commit));
       const manifestResponse = await fetch(new URL('manifest.webmanifest', root));
       const manifest = await manifestResponse.json();
       check('Manifest installs the app under the project subpath', new URL(manifest.scope, root).href === root.href && new URL(manifest.start_url, root).href === root.href && manifest.display === 'standalone');
       check('Manifest includes regular and maskable installation icons', manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
       const cache = await caches.open(`${prefix}v1`);
       const resources = await cache.keys();
-      check('The entire application shell is precached', resources.length === 16 && (await cache.match(new URL('js/app.js', root)))?.ok && (await cache.match(new URL('js/version.js', root)))?.ok);
+      check('The entire application shell is precached', resources.length === 17 && (await cache.match(new URL('js/app.js', root)))?.ok && (await cache.match(new URL('js/version.js', root)))?.ok);
       const unrelated = 'pwa-test-unrelated'; await caches.open(unrelated);
       const keys = ['little-arcade.2048.v1', 'little-arcade.2048-speedy.v1'];
       const initial = keys.map(key => frame.contentWindow.localStorage.getItem(key));

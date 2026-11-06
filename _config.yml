@@ -1,0 +1,8 @@
+plugins:
+  - jekyll-github-metadata
+exclude:
+  - AGENTS.md
+  - README.md
+  - README_CZ.md
+  - scripts
+  - tests
