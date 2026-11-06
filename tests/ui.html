@@ -483,6 +483,34 @@
       sendKey('h'); await pause();
       check('A second H restores help without changing the game', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === helpBeforeH && win.localStorage.getItem(speedyKeys[0]) === gameBeforeH);
       frame.style.width = '1440px'; frame.style.height = '1100px';
+      const gameBeforeMobileLanguage = win.localStorage.getItem(speedyKeys[0]);
+      for (const width of [320, 390, 680]) {
+        frame.style.width = `${width}px`; await pause();
+        const languageToggle = doc.querySelector('.language-menu-toggle');
+        check(`Mobile language selector is a single icon at ${width}px`, win.getComputedStyle(languageToggle).display !== 'none' && win.getComputedStyle(doc.querySelector('.language-switch')).display === 'none' && languageToggle.getAttribute('aria-expanded') === 'false');
+        languageToggle.click(); await pause();
+        const options = Array.from(doc.querySelectorAll('.language-switch button'));
+        const menuBounds = doc.querySelector('.language-switch').getBoundingClientRect();
+        check(`Mobile language menu is vertical and fits ${width}px`, languageToggle.getAttribute('aria-expanded') === 'true' && options.every((button, index) => index === 0 || button.getBoundingClientRect().top > options[index - 1].getBoundingClientRect().top) && menuBounds.left >= 0 && menuBounds.right <= win.innerWidth + 1 && win.getComputedStyle(options[0].querySelector('.language-name')).display !== 'none');
+        doc.querySelector('[data-language="de"]').click(); await pause();
+        check(`Language choice closes mobile menu and restores trigger focus at ${width}px`, doc.documentElement.lang === 'de' && languageToggle.getAttribute('aria-expanded') === 'false' && doc.activeElement === languageToggle && win.localStorage.getItem(speedyKeys[0]) === gameBeforeMobileLanguage);
+      }
+      frame.style.width = '390px'; await pause();
+      doc.querySelector('.language-menu-toggle').click(); await pause();
+      doc.querySelector('[data-language="ar"]').click(); await pause();
+      doc.querySelector('.language-menu-toggle').click(); await pause();
+      const rtlMenu = doc.querySelector('.language-switch').getBoundingClientRect();
+      check('Mobile language menu stays inside the Arabic RTL viewport', doc.documentElement.dir === 'rtl' && rtlMenu.left >= 0 && rtlMenu.right <= win.innerWidth + 1);
+      sendKey('Escape'); await pause();
+      check('Escape closes the language menu and returns focus to its icon', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false' && doc.activeElement === doc.querySelector('.language-menu-toggle'));
+      doc.querySelector('.language-menu-toggle').click(); await pause();
+      doc.body.dispatchEvent(new win.PointerEvent('pointerdown', { bubbles: true })); await pause();
+      check('Clicking outside closes the mobile language menu', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false');
+      doc.querySelector('.language-menu-toggle').click(); await pause();
+      doc.querySelector('.new-game-button').focus(); await pause();
+      check('Moving keyboard focus outside closes the language menu', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false');
+      frame.style.width = '1440px'; await pause();
+      check('Desktop retains the visible row of language switches', win.getComputedStyle(doc.querySelector('.language-menu-toggle')).display === 'none' && win.getComputedStyle(doc.querySelector('.language-switch')).display !== 'none' && Array.from(doc.querySelectorAll('.language-short')).every(element => win.getComputedStyle(element).display !== 'none'));
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

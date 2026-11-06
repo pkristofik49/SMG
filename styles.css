@@ -80,6 +80,16 @@ h1[tabindex="-1"]:focus{outline:none}
 .site-header{flex-wrap:wrap;height:auto;min-height:108px;padding-block:18px}
 .site-header .language-switch{margin-inline-start:auto;flex-shrink:0;gap:2px;padding:3px}
 @media(max-width:680px){.site-header{min-height:85px;padding-block:14px}}
+.language-picker{position:relative;margin-inline-start:auto;flex-shrink:0;max-width:100%}
+.language-menu-toggle,.language-name{display:none}
+@media(max-width:680px){
+  .language-menu-toggle{display:inline-flex}
+  .site-header .language-switch{display:none;position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:40;min-width:180px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 110px);overflow-y:auto;margin:0;padding:6px;gap:4px;direction:inherit;flex-direction:column;align-items:stretch;background:#f5f3ed;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px #263b3426}
+  .language-picker.is-open .language-switch{display:flex}
+  .language-switch button{width:100%;padding:10px 14px;text-align:start}
+  .language-short{display:none}
+  .language-name{display:inline}
+}
 /* Fit a square board and its controls inside the current window. */
 .expanded-mode>.site-header,.expanded-mode>footer{display:none}
 .expanded-mode .play-page{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:12px;max-width:none;margin:0;padding:12px;background:#f5f3ed;overflow:auto}

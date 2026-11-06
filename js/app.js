@@ -35,6 +35,29 @@
       const gameStates = ref({});
       const languages = translations.languages;
       const language = ref('cs');
+      const languageMenuOpen = ref(false), languagePicker = ref(null), languageMenuButton = ref(null);
+      const mobileLanguageQuery = window.matchMedia('(max-width: 680px)');
+      function closeLanguageMenu(restoreFocus = false) {
+        languageMenuOpen.value = false;
+        if (restoreFocus) nextTick(() => languageMenuButton.value?.focus({ preventScroll: true }));
+      }
+      async function toggleLanguageMenu() {
+        languageMenuOpen.value = !languageMenuOpen.value;
+        if (languageMenuOpen.value) {
+          await nextTick();
+          languagePicker.value?.querySelector('[aria-pressed="true"]')?.focus({ preventScroll: true });
+        }
+      }
+      function onLanguageOutside(event) {
+        if (languageMenuOpen.value && !languagePicker.value?.contains(event.target)) closeLanguageMenu();
+      }
+      function onLanguageMenuKey(event) {
+        if (languageMenuOpen.value && event.key === 'Escape') { event.preventDefault(); closeLanguageMenu(true); }
+      }
+      function onLanguagePickerBlur(event) {
+        if (!event.currentTarget.contains(event.relatedTarget)) closeLanguageMenu();
+      }
+      function onLanguageViewportChange() { if (!mobileLanguageQuery.matches) closeLanguageMenu(); }
       try {
         const savedLanguage = readStored(LANGUAGE_KEY, translations.legacyStorageKeys.language);
         if (languages.some(option => option.code === savedLanguage)) language.value = savedLanguage;
@@ -59,6 +82,7 @@
       }
       function setLanguage(code) {
         if (!languages.some(option => option.code === code)) return;
+        closeLanguageMenu(languageMenuOpen.value);
         language.value = code;
         announcement.value = '';
         try { localStorage.setItem(LANGUAGE_KEY, code); } catch { /* Keep the in-memory choice. */ }
@@ -366,6 +390,7 @@
         move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? 'right' : 'left' : dy > 0 ? 'down' : 'up');
       }
       async function navigate() {
+        closeLanguageMenu();
         pauseSpeedyTime();
         stopAnimation();
         const selectedGame = routeGame();
@@ -402,6 +427,9 @@
         window.visualViewport?.addEventListener('resize', sizeExpandedBoard);
         window.addEventListener('hashchange', navigate);
         window.addEventListener('keydown', onKey);
+        document.addEventListener('pointerdown', onLanguageOutside);
+        document.addEventListener('keydown', onLanguageMenuKey);
+        mobileLanguageQuery.addEventListener('change', onLanguageViewportChange);
         document.addEventListener('visibilitychange', onVisibilityChange);
         navigate();
         clockInterval = setInterval(syncSpeedyTime, 25);
@@ -431,10 +459,13 @@
         window.removeEventListener('resize', sizeExpandedBoard);
         window.visualViewport?.removeEventListener('resize', sizeExpandedBoard);
         document.removeEventListener('visibilitychange', onVisibilityChange);
+        document.removeEventListener('pointerdown', onLanguageOutside);
+        document.removeEventListener('keydown', onLanguageMenuKey);
+        mobileLanguageQuery.removeEventListener('change', onLanguageViewportChange);
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }
