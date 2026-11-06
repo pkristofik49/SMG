@@ -48,9 +48,12 @@
         const samples = slideBuffer.getChannelData(0);
         // Generate repeatable noise without affecting the game's random tile generator.
         let seed = 0x12345678;
+        let smoothSample = 0;
         for (let i = 0; i < samples.length; i++) {
           seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5;
-          samples[i] = (seed >>> 0) / 2147483648 - 1;
+          const noise = (seed >>> 0) / 2147483648 - 1;
+          smoothSample = smoothSample * 0.82 + noise * 0.18;
+          samples[i] = smoothSample;
         }
       }
       const start = context.currentTime;
@@ -58,13 +61,13 @@
       const filter = context.createBiquadFilter();
       const gain = context.createGain();
       source.buffer = slideBuffer;
-      filter.type = 'bandpass';
-      filter.Q.setValueAtTime(0.65, start);
-      filter.frequency.setValueAtTime(2400, start);
-      filter.frequency.exponentialRampToValueAtTime(1400, start + duration);
+      filter.type = 'lowpass';
+      filter.Q.setValueAtTime(0.5, start);
+      filter.frequency.setValueAtTime(1200, start);
+      filter.frequency.exponentialRampToValueAtTime(650, start + duration);
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.09, start + 0.018);
-      gain.gain.exponentialRampToValueAtTime(0.045, start + 0.085);
+      gain.gain.linearRampToValueAtTime(0.055, start + 0.035);
+      gain.gain.linearRampToValueAtTime(0.025, start + 0.085);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       source.connect(filter); filter.connect(gain); gain.connect(context.destination);
       playSource(source, gain, start, duration, [filter]);
@@ -79,6 +82,7 @@
       oscillator.frequency.exponentialRampToValueAtTime(endFrequency, start + duration);
       gain.gain.setValueAtTime(0, start);
       gain.gain.linearRampToValueAtTime(volume, start + 0.008);
+      gain.gain.setValueAtTime(volume, start + duration * 0.3);
       gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
       oscillator.connect(gain);
       gain.connect(context.destination);
@@ -89,10 +93,10 @@
       move: slide,
       blocked() {
         stop();
-        tone(280, 250, 0.045, 0.075, 0, 'triangle');
-        tone(220, 200, 0.045, 0.060, 0.065, 'triangle');
+        tone(420, 360, 0.080, 0.120, 0, 'triangle');
+        tone(340, 290, 0.080, 0.100, 0.095, 'triangle');
       },
-      merge() { tone(420, 380, 0.12, 0.060); tone(630, 570, 0.14, 0.042, 0.035); },
+      merge() { tone(420, 380, 0.12, 0.095); tone(630, 570, 0.14, 0.075, 0.035); },
       stop,
       dispose() {
         revision++; enabled = false; stop();
