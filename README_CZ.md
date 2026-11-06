@@ -34,7 +34,7 @@ Samostatné testy výpočtu času lze spustit otevřením `tests/speedy-clock.ht
 
 ## Rozšířené zobrazení
 
-Tlačítko s ikonou roztažení mezi novou hrou a knížkou přepíná obě hry do zobrazení přes celé okno. Deska zůstává čtvercová a zvětšuje se podle místa zbývajícího pro skóre, časomíru a ovládání. Rozměry se přepočítají při změně okna i otočení telefonu. Hlavička a patička se skryjí; nápovědu lze otevřít knížkou jako panel. Stejné tlačítko, klávesa `F` nebo Escape mimo dialog vrátí běžné rozložení a původní viditelnost nápovědy. Partie i čas speedy zůstávají zachované a čas během přepínání běží dál.
+Tlačítko s ikonou roztažení mezi novou hrou a knížkou přepíná obě hry do zobrazení přes celé okno. Deska zůstává čtvercová a zvětšuje se podle místa zbývajícího pro skóre, časomíru a ovládání. Rozměry se přepočítají při změně okna i otočení telefonu. Hlavička a patička se skryjí; nápovědu lze otevřít knížkou jako panel. Stejné tlačítko, klávesa `F` nebo Escape mimo dialog vrátí běžné rozložení a původní viditelnost nápovědy. Zobrazení i skrytí nápovědy doprovází postupné zeslabení a posun panelu během 280 ms a plynulý přesun hry mezi běžnou pozicí a středem. Animace funguje přes knížku i `H`, také u plovoucího panelu v rozšířeném zobrazení. Rychlé přepínání bezpečně zruší předchozí animaci; při systémově omezeném pohybu proběhne změna okamžitě. Partie i čas speedy zůstávají zachované a čas během přepínání běží dál.
 
 ## Zvuk
 

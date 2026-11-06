@@ -277,7 +277,7 @@
       doc.querySelector('.direction-pad button').click(); await pause(160);
       check('Blocked move plays a distinct two-tap sound', tones.length === tonesBeforeBlocked + 2 && tones.slice(-2).every(tone => tone.type === 'triangle'));
       check('Blocked sound leaves the board, score and move count unchanged', win.localStorage.getItem(keys[0]) === blockedGame && !doc.querySelector('.tile-motion-layer'));
-      doc.querySelector('.guide-toggle').click(); await pause();
+      doc.querySelector('.guide-toggle').click(); await pause(360);
       check('Help can be hidden without changing the game', win.getComputedStyle(doc.querySelector('.game-guide')).display === 'none' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false' && win.localStorage.getItem(keys[0]) === blockedGame);
       for (const width of [320, 390, 768, 1440]) {
         frame.style.width = `${width}px`; await pause();
@@ -285,7 +285,7 @@
         const mainBounds = doc.querySelector('.play-page').getBoundingClientRect();
         check(`Hidden help centres the game at ${width}px without overflow`, Math.abs((gameBounds.left + gameBounds.right) / 2 - (mainBounds.left + mainBounds.right) / 2) < 1 && doc.documentElement.scrollWidth <= win.innerWidth);
       }
-      doc.querySelector('.guide-toggle').click(); await pause();
+      doc.querySelector('.guide-toggle').click(); await pause(360);
       check('Help can be shown again without changing the game', win.getComputedStyle(doc.querySelector('.game-guide')).display !== 'none' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true' && win.localStorage.getItem(keys[0]) === blockedGame);
       doc.querySelector('.back-link').click(); await pause();
       const allTranslations = win.ArcadeTranslations;
@@ -511,6 +511,32 @@
       check('Moving keyboard focus outside closes the language menu', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false');
       frame.style.width = '1440px'; await pause();
       check('Desktop retains the visible row of language switches', win.getComputedStyle(doc.querySelector('.language-menu-toggle')).display === 'none' && win.getComputedStyle(doc.querySelector('.language-switch')).display !== 'none' && Array.from(doc.querySelectorAll('.language-short')).every(element => win.getComputedStyle(element).display !== 'none'));
+      if (doc.querySelector('.guide-toggle').getAttribute('aria-expanded') !== 'true') { doc.querySelector('.guide-toggle').click(); await pause(360); }
+      const beforeGuideAnimation = win.localStorage.getItem(speedyKeys[0]);
+      doc.querySelector('.guide-toggle').click(); await pause(40);
+      check('Hiding help animates the panel without leaving it accessible', doc.querySelector('.game-guide').getAnimations().length > 0 && doc.querySelector('.game-guide').getAttribute('aria-hidden') === 'true' && doc.querySelector('.game-guide').inert);
+      check('Hiding help animates the game toward the centre', doc.querySelector('.game-area').getAnimations().length > 0);
+      await pause(320);
+      check('Help is fully hidden after its exit animation', win.getComputedStyle(doc.querySelector('.game-guide')).display === 'none');
+      doc.querySelector('.guide-toggle').click(); await pause(40);
+      check('Showing help animates the panel back into view', doc.querySelector('.game-guide').getAnimations().length > 0 && doc.querySelector('.game-guide').getAttribute('aria-hidden') === 'false');
+      doc.querySelector('.guide-toggle').click(); await pause(20);
+      doc.querySelector('.guide-toggle').click(); await pause(360);
+      check('Rapid help toggles settle without stale animation or positioning', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true' && win.getComputedStyle(doc.querySelector('.game-guide')).display !== 'none' && doc.querySelector('.game-guide').getAnimations().length === 0 && doc.querySelector('.game-guide').style.position === '');
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
+      doc.querySelector('.guide-toggle').click(); await pause(40);
+      check('Expanded view animates its floating help panel', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.game-guide').getAnimations().length > 0);
+      await pause(320);
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
+      const guideMatchMedia = win.matchMedia;
+      try {
+        win.matchMedia = query => query === '(prefers-reduced-motion: reduce)' ? { matches: true } : guideMatchMedia.call(win, query);
+        doc.querySelector('.guide-toggle').click(); await pause();
+        check('Reduced motion hides help immediately without animations', win.getComputedStyle(doc.querySelector('.game-guide')).display === 'none' && doc.querySelector('.game-guide').getAnimations().length === 0 && doc.querySelector('.game-area').getAnimations().length === 0);
+        doc.querySelector('.guide-toggle').click(); await pause();
+        check('Reduced motion restores help immediately', win.getComputedStyle(doc.querySelector('.game-guide')).display !== 'none' && doc.querySelector('.game-guide').getAnimations().length === 0);
+      } finally { win.matchMedia = guideMatchMedia; }
+      check('Help animations preserve the game', win.localStorage.getItem(speedyKeys[0]) === beforeGuideAnimation);
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

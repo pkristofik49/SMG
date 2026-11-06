@@ -98,6 +98,56 @@
       const board = ref(Array(16).fill(0));
       const guideVisible = ref(true);
       const expanded = ref(false), expandedBoardSize = ref(500), playPage = ref(null);
+      const guideLeaveStyle = ref({});
+      let guideLayoutAnimation = null, guideLayoutTimer = null, guideLayoutVersion = 0;
+      let guidePanelAnimation = null, guidePanelTimer = null;
+      function cancelGuidePanelAnimation() {
+        clearTimeout(guidePanelTimer);
+        guidePanelAnimation?.cancel(); guidePanelAnimation = null;
+      }
+      function animateGuidePanel(element, done, entering) {
+        cancelGuidePanelAnimation();
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) { done(); return; }
+        const offset = mobileLanguageQuery.matches ? 'translateY(12px)' : `translateX(${getComputedStyle(element).direction === 'rtl' ? -18 : 18}px)`;
+        const hidden = { opacity: 0, transform: offset }, shown = { opacity: 1, transform: 'translate(0, 0)' };
+        guidePanelAnimation = element.animate(entering ? [hidden, shown] : [shown, hidden], {
+          duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both'
+        });
+        guidePanelTimer = setTimeout(() => { cancelGuidePanelAnimation(); done(); }, 280);
+      }
+      const enterGuide = (element, done) => animateGuidePanel(element, done, true);
+      const leaveGuide = (element, done) => animateGuidePanel(element, done, false);
+      watch(guideVisible, visible => {
+        if (visible) return;
+        const bounds = playPage.value?.querySelector('.game-guide')?.getBoundingClientRect();
+        if (bounds) guideLeaveStyle.value = {
+          position: 'fixed', left: `${bounds.left}px`, top: `${bounds.top}px`,
+          width: `${bounds.width}px`, margin: '0', pointerEvents: 'none', zIndex: 2
+        };
+      }, { flush: 'sync' });
+      function cancelGuideLayoutAnimation() {
+        guideLayoutVersion++;
+        clearTimeout(guideLayoutTimer);
+        guideLayoutAnimation?.cancel(); guideLayoutAnimation = null;
+      }
+      async function toggleGuide() {
+        const area = playPage.value?.querySelector('.game-area');
+        const before = area?.getBoundingClientRect();
+        cancelGuideLayoutAnimation();
+        const version = guideLayoutVersion;
+        guideVisible.value = !guideVisible.value;
+        await nextTick();
+        if (version !== guideLayoutVersion || !area?.isConnected || !before || expanded.value || window.matchMedia('(prefers-reduced-motion: reduce)').matches || !area.animate) return;
+        const after = area.getBoundingClientRect();
+        const dx = before.left - after.left, dy = before.top - after.top;
+        if (Math.abs(dx) + Math.abs(dy) < 0.5) return;
+        guideLayoutAnimation = area.animate([
+          { transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }
+        ], { duration: 280, easing: 'cubic-bezier(.22,.61,.36,1)' });
+        guideLayoutTimer = setTimeout(() => {
+          if (version === guideLayoutVersion) cancelGuideLayoutAnimation();
+        }, 280);
+      }
       let previousGuideVisible = true, expandedObserver;
       function sizeExpandedBoard() {
         if (!expanded.value || !playPage.value) return;
@@ -116,6 +166,7 @@
         expandedBoardSize.value = Math.max(1, Math.floor(Math.min(width, height)));
       }
       async function toggleExpanded() {
+        cancelGuideLayoutAnimation();
         expanded.value = !expanded.value;
         if (expanded.value) { previousGuideVisible = guideVisible.value; guideVisible.value = false; }
         else guideVisible.value = previousGuideVisible;
@@ -340,7 +391,7 @@
         const key = event.key.toLowerCase();
         if (key === 'h') {
           event.preventDefault();
-          if (!event.repeat) guideVisible.value = !guideVisible.value;
+          if (!event.repeat) toggleGuide();
           return;
         }
         if (key === 'f') {
@@ -390,6 +441,7 @@
         move(Math.abs(dx) > Math.abs(dy) ? dx > 0 ? 'right' : 'left' : dy > 0 ? 'down' : 'up');
       }
       async function navigate() {
+        cancelGuideLayoutAnimation();
         closeLanguageMenu();
         pauseSpeedyTime();
         stopAnimation();
@@ -424,6 +476,7 @@
         activateGame(activeGame.value);
         expandedObserver = new ResizeObserver(sizeExpandedBoard);
         window.addEventListener('resize', sizeExpandedBoard);
+        window.addEventListener('resize', cancelGuideLayoutAnimation);
         window.visualViewport?.addEventListener('resize', sizeExpandedBoard);
         window.addEventListener('hashchange', navigate);
         window.addEventListener('keydown', onKey);
@@ -450,6 +503,8 @@
         }, { flush: 'post', immediate: true });
       });
       onUnmounted(() => {
+        cancelGuidePanelAnimation();
+        cancelGuideLayoutAnimation();
         pauseSpeedyTime(); clearInterval(clockInterval);
         window.removeEventListener('pagehide', pauseSpeedyTime);
         window.removeEventListener('pageshow', resumeSpeedyTime);
@@ -457,6 +512,7 @@
         sound.dispose();
         expandedObserver?.disconnect();
         window.removeEventListener('resize', sizeExpandedBoard);
+        window.removeEventListener('resize', cancelGuideLayoutAnimation);
         window.visualViewport?.removeEventListener('resize', sizeExpandedBoard);
         document.removeEventListener('visibilitychange', onVisibilityChange);
         document.removeEventListener('pointerdown', onLanguageOutside);
@@ -465,7 +521,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }
