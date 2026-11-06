@@ -130,7 +130,7 @@
       await reload(); doc = frame.contentDocument;
       check('English choice persists across reloads', doc.documentElement.lang === 'en' && doc.querySelector('[data-language="en"]').getAttribute('aria-pressed') === 'true');
       doc.querySelector('.game-card').click(); await pause();
-      check('English translates game controls and accessibility labels', doc.querySelector('.new-game-button').textContent.includes('New game') && doc.querySelector('.board').getAttribute('aria-label').includes('Use the arrow keys') && doc.querySelector('.board .tile').getAttribute('aria-label').startsWith('Row 1, column 1:'));
+      check('English translates game controls and accessibility labels', doc.querySelector('.new-game-button').getAttribute('aria-label').includes('New game') && doc.querySelector('.board').getAttribute('aria-label').includes('Use the arrow keys') && doc.querySelector('.board .tile').getAttribute('aria-label').startsWith('Row 1, column 1:'));
       for (const width of [320, 390, 768, 1440]) {
         frame.style.width = `${width}px`; await pause();
         check(`English game has no horizontal overflow at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
@@ -305,7 +305,7 @@
         await reload(); doc = frame.contentDocument;
         check(`${option.code} choice survives reload`, doc.documentElement.lang === option.code && doc.querySelector(`[data-language="${option.code}"]`).getAttribute('aria-pressed') === 'true');
         doc.querySelector('.game-card').click(); await pause();
-        check(`${option.code} translates game controls and move counts`, doc.querySelector('.new-game-button').textContent.includes(option.newGame) && doc.querySelector('.below-board>span').textContent === option.count);
+        check(`${option.code} translates game controls and move counts`, doc.querySelector('.new-game-button').getAttribute('aria-label').includes(option.newGame) && doc.querySelector('.below-board>span').textContent === option.count);
         for (const width of [320, 390, 768, 1440]) {
           frame.style.width = `${width}px`; await pause();
           check(`${option.code} game fits at ${width}px`, doc.documentElement.scrollWidth <= win.innerWidth);
