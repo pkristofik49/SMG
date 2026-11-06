@@ -582,6 +582,25 @@
       frame.style.width = '1440px'; await pause(); win.dispatchEvent(new win.Event('resize')); await pause(360);
       check('Normal desktop help remains a side column without a close button', win.getComputedStyle(doc.querySelector('.game-guide')).position !== 'fixed' && win.getComputedStyle(doc.querySelector('.guide-close')).display === 'none');
       check('Mobile help preserves the saved game', win.localStorage.getItem(keys[0]) === beforeMobileHelp);
+      doc.querySelector('.fullscreen-button').click(); await pause(360);
+      doc.querySelector('.guide-toggle').click(); await pause(360);
+      const savedExpandedBoard = win.localStorage.getItem(keys[0]);
+      doc.querySelector('.back-link').click(); await pause();
+      check('Returning to the menu leaves the menu in normal view', !doc.querySelector('#app').classList.contains('expanded-mode') && win.getComputedStyle(doc.querySelector('.site-header')).display !== 'none');
+      frame.style.width = '390px'; frame.style.height = '844px'; await pause();
+      win.location.hash = '#/2048'; await pause(360);
+      const restoredBounds = doc.querySelector('.board').getBoundingClientRect();
+      check('Reopening a game restores expanded view and its open help panel', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true');
+      check('Restored expanded view fits the current mobile viewport and preserves the board', restoredBounds.left >= 0 && restoredBounds.right <= win.innerWidth + 1 && doc.querySelector('.direction-pad').getBoundingClientRect().bottom <= win.innerHeight + 1 && win.localStorage.getItem(keys[0]) === savedExpandedBoard);
+      sendKey('f'); await pause(360);
+      check('Leaving restored expanded view remembers the original normal help state', doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true');
+      sendKey('h'); await pause(360);
+      doc.querySelector('.back-link').click(); await pause();
+      win.location.hash = '#/2048-speedy'; await pause(360);
+      check('Each game remembers its own expanded view', doc.querySelector('#app').classList.contains('expanded-mode'));
+      doc.querySelector('.back-link').click(); await pause();
+      win.location.hash = '#/2048'; await pause(360);
+      check('Normal view and hidden help are also restored independently', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false');
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

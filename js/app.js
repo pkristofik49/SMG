@@ -177,6 +177,7 @@
         }, 280);
       }
       let previousGuideVisible = true, expandedObserver;
+      const gameViews = Object.create(null);
       function sizeExpandedBoard() {
         if (!expanded.value || !playPage.value) return;
         const main = playPage.value;
@@ -511,11 +512,18 @@
         pauseSpeedyTime();
         stopAnimation();
         const selectedGame = routeGame();
-        page.value = selectedGame ? 'game' : 'menu';
-        if (!selectedGame && expanded.value) {
-          expanded.value = false; guideVisible.value = previousGuideVisible;
+        if (page.value === 'game') {
+          gameViews[activeGame.value] = { expanded: expanded.value, guideVisible: guideVisible.value, previousGuideVisible };
         }
+        page.value = selectedGame ? 'game' : 'menu';
+        if (!selectedGame) expanded.value = false;
         if (selectedGame && selectedGame.id !== activeGame.value) activateGame(selectedGame.id);
+        if (selectedGame) {
+          const view = gameViews[selectedGame.id];
+          expanded.value = view?.expanded ?? false;
+          guideVisible.value = view?.guideVisible ?? true;
+          previousGuideVisible = view?.previousGuideVisible ?? true;
+        }
         pointerStart.value = null;
         if (page.value === 'game') checkEnd(); else overlay.value = null;
         await nextTick();
