@@ -27,6 +27,7 @@
   createApp({
     setup() {
       const appVersion = ArcadeVersion;
+      const appCommit = ArcadeCommit;
       const page = ref(routeGame() ? 'game' : 'menu');
       const games = GAMES;
       const activeGame = ref(routeGame()?.id || 'classic');
@@ -720,7 +721,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { appVersion, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

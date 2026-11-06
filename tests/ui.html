@@ -774,7 +774,7 @@
         doc.querySelector(`[data-language="${code}"]`).click(); await pause();
         const version = doc.querySelector('footer .footer-version');
         const bounds = version?.getBoundingClientRect();
-        check(`Main-menu footer shows the current version in ${code}`, version?.querySelector('bdi')?.textContent === win.ArcadeVersion && /^\d+\.\d{3}$/.test(win.ArcadeVersion) && version.textContent.includes(win.ArcadeTranslations[code]['footer.version']) && bounds.left >= 0 && bounds.right <= win.innerWidth);
+        check(`Main-menu footer shows the current version in ${code}`, version?.querySelector('bdi')?.textContent === win.ArcadeVersion && /^\d+\.\d{3}$/.test(win.ArcadeVersion) && version.querySelectorAll('bdi')[1]?.textContent === '#' + win.ArcadeCommit && doc.querySelector('footer').firstElementChild.textContent === 'SMG' && doc.querySelector('footer').children.length === 2 && bounds.left >= 0 && bounds.right <= win.innerWidth);
       }
       win.location.hash = '#/2048'; await pause();
       check('The application version is shown only in the main menu', !doc.querySelector('.footer-version'));

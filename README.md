@@ -24,9 +24,9 @@ Every commit updates `RELEASE` in `sw.js` to match the application version, prod
 
 ## Application version
 
-The main-menu footer shows the version from `js/version.js`, starting at **1.000**. Each subsequent commit increases it by **0.001**: 1.001, 1.002, and so on (1.999 becomes 2.000). The label follows the selected language; the version itself retains its three-digit format.
+The main-menu footer contains only **SMG**, the application version, and the commit number, for example **SMG · 1.004 · #21**. Both numbers come from `js/version.js`; the commit number is the count of commits in the Git history, not a hash. Application versioning starts at **1.000**. Each subsequent commit increases it by **0.001**: 1.001, 1.002, and so on (1.999 becomes 2.000). The footer uses the same compact format in every language, with three digits after the version decimal point.
 
-After cloning, enable the tracked hook with `git config core.hooksPath .githooks`. The hook uses Windows PowerShell, derives the next number from the committed HEAD, and stages only `js/version.js` and the matching release in `sw.js`. Stage any edits to those files before committing; otherwise the hook stops instead of staging unrelated work. A failed commit can be retried without skipping version numbers. This checkout already has the hook enabled. Commits made through GitHub's web interface or another checkout without the hook require the same version update manually. Run `.\tests\versioning.ps1` to verify initial numbering, increments, and rejected-commit retries in an isolated temporary repository.
+After cloning, enable the tracked hook with `git config core.hooksPath .githooks`. The hook uses Windows PowerShell, derives the next version and commit count from the committed HEAD, and stages only `js/version.js` and the matching release in `sw.js`. Stage any edits to those files before committing; otherwise the hook stops instead of staging unrelated work. A failed commit can be retried without skipping version numbers. This checkout already has the hook enabled. Commits made through GitHub's web interface or another checkout without the hook require the same version update manually. Run `.\tests\versioning.ps1` to verify initial numbering, increments, and rejected-commit retries in an isolated temporary repository.
 
 ## Controls and behavior
 

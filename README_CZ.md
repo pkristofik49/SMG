@@ -24,9 +24,9 @@ Každý commit aktualizuje `RELEASE` v `sw.js` podle verze aplikace a vytvoří 
 
 ## Verze aplikace
 
-Patička hlavního menu zobrazuje verzi z `js/version.js`, počínaje **1.000**. Každý další commit ji zvýší o **0.001**: 1.001, 1.002 a dále (po 1.999 následuje 2.000). Popisek odpovídá vybranému jazyku; samotné číslo si zachovává formát se třemi číslicemi za tečkou.
+Patička hlavního menu obsahuje jen **SMG**, verzi aplikace a číslo commitu, například **SMG · 1.004 · #21**. Oba číselné údaje pocházejí z `js/version.js`; číslo commitu znamená počet commitů v historii Gitu, nikoli hash. Číslování verzí začíná na **1.000**. Každý další commit ji zvýší o **0.001**: 1.001, 1.002 a dále (po 1.999 následuje 2.000). Patička používá ve všech jazycích stejný stručný formát se třemi číslicemi za tečkou ve verzi.
 
-Po naklonování zapněte verzovaný hook příkazem `git config core.hooksPath .githooks`. Hook používá Windows PowerShell, odvodí další číslo z uloženého HEAD a připraví ke commitu jen `js/version.js` a odpovídající verzi v `sw.js`. Případné úpravy těchto souborů nejprve připravte ke commitu; jinak se hook zastaví, aby nepřidal nesouvisející práci. Neúspěšný commit lze opakovat bez přeskočení čísla. V této pracovní kopii už je hook zapnutý. Commity přes webové rozhraní GitHubu nebo z jiné kopie bez hooku vyžadují stejnou aktualizaci verze ručně. Příkaz `.\tests\versioning.ps1` ověří první číslo, zvyšování a opakování odmítnutého commitu v odděleném dočasném repozitáři.
+Po naklonování zapněte verzovaný hook příkazem `git config core.hooksPath .githooks`. Hook používá Windows PowerShell, odvodí další verzi a počet commitů z uloženého HEAD a připraví ke commitu jen `js/version.js` a odpovídající verzi v `sw.js`. Případné úpravy těchto souborů nejprve připravte ke commitu; jinak se hook zastaví, aby nepřidal nesouvisející práci. Neúspěšný commit lze opakovat bez přeskočení čísla. V této pracovní kopii už je hook zapnutý. Commity přes webové rozhraní GitHubu nebo z jiné kopie bez hooku vyžadují stejnou aktualizaci verze ručně. Příkaz `.\tests\versioning.ps1` ověří první číslo, zvyšování a opakování odmítnutého commitu v odděleném dočasném repozitáři.
 
 ## Ovládání a chování
 

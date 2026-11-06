@@ -15,7 +15,8 @@ $workerPath = Join-Path $root 'sw.js'
 $worker = [IO.File]::ReadAllText($workerPath)
 if ($worker -notmatch "const RELEASE = '[^']+';") { throw 'Service worker release declaration not found' }
 $worker = [regex]::Replace($worker, "const RELEASE = '[^']+';", "const RELEASE = '$version';")
-$versionSource = "/* The pre-commit hook derives this value from the previous committed version. */`nglobalThis.ArcadeVersion = '$version';`n"
+$commitNumber = [long](git rev-list --count HEAD) + 1
+$versionSource = "/* The pre-commit hook derives this value from the previous committed version. */`nglobalThis.ArcadeVersion = '$version';`nglobalThis.ArcadeCommit = $commitNumber;`n"
 [IO.File]::WriteAllText((Join-Path $root 'js/version.js'), $versionSource, [Text.UTF8Encoding]::new($false))
 [IO.File]::WriteAllText($workerPath, $worker, [Text.UTF8Encoding]::new($false))
 git add -- js/version.js sw.js

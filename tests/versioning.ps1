@@ -40,3 +40,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Commit retry failed' }
 if ([IO.File]::ReadAllText((Join-Path $fixture 'js/version.js')) -notmatch "'1.002'") { throw 'Retried version must be 1.002' }
 if (git -C $fixture status --porcelain) { throw 'Versioning left uncommitted changes' }
 'PASS Retried commit increments exactly once and leaves a clean tree'
+
+$versionData = [IO.File]::ReadAllText((Join-Path $fixture 'js/version.js'))
+if ($versionData -notmatch 'ArcadeCommit = (\d+);') { throw 'Commit number was not generated' }
+if ([long]$Matches[1] -ne [long](git -C $fixture rev-list --count HEAD)) { throw 'Displayed commit count does not match Git history' }
+'PASS Generated commit number matches the committed Git history'

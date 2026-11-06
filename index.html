@@ -132,7 +132,7 @@
       <p class="save-note" role="status">{{ t(storageAvailable ? 'storage.saved' : 'storage.unavailable') }}</p>
       <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
     </main>
-    <footer><span>{{ t('brand.name') }} <span class="footer-dot">·</span> {{ t('footer.joy') }}</span><span>{{ t('footer.note') }}</span><span v-if="page === 'menu'" class="footer-version">{{ t('footer.version') }} <bdi>{{ appVersion }}</bdi></span></footer>
+    <footer><template v-if="page === 'menu'"><span>SMG</span><span class="footer-version"><bdi>{{ appVersion }}</bdi><span class="footer-dot">·</span><bdi>#{{ appCommit }}</bdi></span></template><template v-else><span>{{ t('brand.name') }} <span class="footer-dot">·</span> {{ t('footer.joy') }}</span><span>{{ t('footer.note') }}</span></template></footer>
   </div>
   <!-- Static bilingual fallback: scripts cannot translate content when JavaScript is disabled. -->
   <noscript><p lang="cs">Pro spuštění Malé herny povolte JavaScript v prohlížeči.</p><p lang="en">Enable JavaScript in your browser to open Little Arcade.</p></noscript>
