@@ -777,7 +777,7 @@
         check(`Main-menu footer shows the current version in ${code}`, version?.querySelector('bdi')?.textContent === win.ArcadeVersion && /^\d+\.\d{3}$/.test(win.ArcadeVersion) && (!version.querySelector('.footer-commit') || /^[0-9a-f]{7}$/.test(version.querySelector('.footer-commit').textContent)) && doc.querySelector('footer').firstElementChild.textContent === 'SMG' && doc.querySelector('footer').children.length === 2 && bounds.left >= 0 && bounds.right <= win.innerWidth);
       }
       win.location.hash = '#/2048'; await pause();
-      check('The application version is shown only in the main menu', !doc.querySelector('.footer-version'));
+      check('Classic uses the same SMG version footer as the menu', doc.querySelector('footer').firstElementChild.textContent === 'SMG' && doc.querySelector('.footer-version bdi').textContent === win.ArcadeVersion && doc.querySelector('footer').children.length === 2);
       if (doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true') { sendKey('f'); await pause(360); }
       if (doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true') { sendKey('h'); await pause(360); }
       sendKey('f'); await pause(360); sendKey('h'); await pause(360);
@@ -796,6 +796,7 @@
       doc.querySelector('.back-link').click(); await pause();
       win.location.hash = '#/2048-speedy'; await pause(360);
       check('Speedy keeps its own saved fullscreen preference', doc.querySelector('#app').classList.contains('expanded-mode'));
+      check('Speedy uses the same SMG version footer as the menu', doc.querySelector('footer').firstElementChild.textContent === 'SMG' && doc.querySelector('.footer-version bdi').textContent === win.ArcadeVersion && doc.querySelector('footer').children.length === 2);
       win.AudioContext = testAudioContext;
       if (doc.querySelector('.sound-button').getAttribute('aria-pressed') !== 'true') { doc.querySelector('.sound-button').click(); await pause(); }
       check('Enabling global sound persists the choice', win.localStorage.getItem(keys[5]) === 'true');
