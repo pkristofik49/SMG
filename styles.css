@@ -81,15 +81,18 @@ h1[tabindex="-1"]:focus{outline:none}
 .site-header .language-switch{margin-inline-start:auto;flex-shrink:0;gap:2px;padding:3px}
 @media(max-width:680px){.site-header{min-height:85px;padding-block:14px}}
 .language-picker{position:relative;margin-inline-start:auto;flex-shrink:0;max-width:100%}
+.global-controls{display:flex;align-items:center;gap:8px;margin-inline-start:auto;flex-shrink:0}
 .language-name{display:inline}
   .language-menu-toggle{display:inline-flex}
   .site-header .language-switch{display:none;position:absolute;inset-block-start:calc(100% + 8px);inset-inline-end:0;z-index:40;min-width:180px;max-width:calc(100vw - 28px);max-height:calc(100dvh - 110px);overflow-y:auto;margin:0;padding:6px;gap:4px;direction:inherit;flex-direction:column;align-items:stretch;background:#f5f3ed;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px #263b3426}
   .language-picker.is-open .language-switch{display:flex}
   .language-switch button{width:100%;padding:10px 14px;text-align:start}
 /* Fit a square board and its controls inside the current window. */
-.expanded-mode>.site-header,.expanded-mode>footer{display:none}
+.expanded-mode>footer,.expanded-mode>.site-header>.brand,.expanded-mode>.site-header>.header-note{display:none}
+.expanded-mode>.site-header{display:contents}
+.expanded-mode .global-controls{position:fixed;inset-block-start:12px;inset-inline-end:12px;z-index:30}
 .expanded-mode .play-page{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:12px;max-width:none;margin:0;padding:12px;background:#f5f3ed;overflow:auto}
-.expanded-mode .play-topbar{flex-shrink:0}
+.expanded-mode .play-topbar{flex-shrink:0;padding-inline-end:104px}
 .expanded-mode .play-layout,.expanded-mode .play-layout.guide-hidden{display:flex;flex:1;align-items:center;justify-content:center;min-height:0;max-width:none;width:100%;margin:0;gap:0}
 .expanded-mode .game-area{width:max(250px,var(--expanded-board-size));max-width:100%;flex-shrink:0;container-type:inline-size}
 .expanded-mode .board-wrap{width:var(--expanded-board-size);max-width:100%;margin-inline:auto;container-type:inline-size}

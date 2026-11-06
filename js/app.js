@@ -449,10 +449,16 @@
       }
       const directions = { ArrowLeft: 'left', ArrowRight: 'right', ArrowUp: 'up', ArrowDown: 'down', a: 'left', d: 'right', w: 'up', s: 'down' };
       function onKey(event) {
-        if (page.value !== 'game' || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing || event.defaultPrevented) return;
+        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.isComposing || event.defaultPrevented) return;
         const target = event.target instanceof Element ? event.target : null;
         if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]')) return;
         const key = event.key.toLowerCase();
+        if (key === 'z') {
+          event.preventDefault();
+          if (!event.repeat && audioAvailable) toggleSound();
+          return;
+        }
+        if (page.value !== 'game') return;
         if (key === 'h') {
           event.preventDefault();
           if (!event.repeat) toggleGuide();
@@ -465,11 +471,6 @@
         }
         if (key === 'escape' && expanded.value && !overlay.value) {
           event.preventDefault(); toggleExpanded(); return;
-        }
-        if (key === 'z') {
-          event.preventDefault();
-          if (!event.repeat && audioAvailable) toggleSound();
-          return;
         }
         if (key === 'n') {
           event.preventDefault();

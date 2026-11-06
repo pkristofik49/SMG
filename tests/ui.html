@@ -442,7 +442,7 @@
       const originalHelp = doc.querySelector('.guide-toggle').getAttribute('aria-expanded');
       check('Window mode toggle sits between new game and help', doc.querySelector('.new-game-button').nextElementSibling === doc.querySelector('.fullscreen-button') && doc.querySelector('.fullscreen-button').nextElementSibling === doc.querySelector('.guide-toggle'));
       doc.querySelector('.fullscreen-button').click(); await pause(360);
-      check('Expanded view fills the window and enlarges the board', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true' && doc.querySelector('.board').getBoundingClientRect().width > normalBoardWidth && win.getComputedStyle(doc.querySelector('.site-header')).display === 'none');
+      check('Expanded view fills the window and enlarges the board', doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.fullscreen-button').getAttribute('aria-pressed') === 'true' && doc.querySelector('.board').getBoundingClientRect().width > normalBoardWidth && win.getComputedStyle(doc.querySelector('.brand')).display === 'none');
       check('Expanded view preserves game state', win.localStorage.getItem(keys[0]) === beforeExpandedSave);
       for (const [width, height] of [[1440,1100], [768,1024], [390,844], [844,390], [320,568]]) {
         frame.style.width = `${width}px`; frame.style.height = `${height}px`; await pause(180); win.dispatchEvent(new win.Event('resize')); await pause(60);
@@ -607,6 +607,30 @@
       doc.querySelector('.back-link').click(); await pause();
       win.location.hash = '#/2048'; await pause(360);
       check('Normal view and hidden help are also restored independently', !doc.querySelector('#app').classList.contains('expanded-mode') && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false');
+      doc.querySelector('.back-link').click(); await pause();
+      const globalSound = doc.querySelector('.sound-button');
+      if (globalSound.getAttribute('aria-pressed') === 'true') { globalSound.click(); await pause(); }
+      check('Menu exposes one global sound button next to the globe', doc.querySelectorAll('.sound-button').length === 1 && globalSound.closest('.global-controls') === doc.querySelector('.language-picker').parentElement && globalSound.getBoundingClientRect().width === 44);
+      sendKey('z'); await pause();
+      check('Z enables global sound in the main menu', globalSound.getAttribute('aria-pressed') === 'true');
+      sendKey('z', { repeat: true }); await pause();
+      check('Holding Z in the menu does not repeatedly toggle sound', globalSound.getAttribute('aria-pressed') === 'true');
+      win.location.hash = '#/2048'; await pause();
+      check('Classic uses the global sound setting without a game toolbar toggle', doc.querySelector('.sound-button') === globalSound && globalSound.getAttribute('aria-pressed') === 'true' && !doc.querySelector('.play-topbar .sound-button'));
+      doc.querySelector('.back-link').click(); await pause();
+      win.location.hash = '#/2048-speedy'; await pause(360);
+      check('Speedy shares the same global sound setting', doc.querySelector('.sound-button') === globalSound && globalSound.getAttribute('aria-pressed') === 'true');
+      for (const width of [320, 390, 1440]) {
+        frame.style.width = `${width}px`; await pause(); win.dispatchEvent(new win.Event('resize')); await pause(360);
+        const controls = doc.querySelector('.global-controls').getBoundingClientRect();
+        const soundBounds = globalSound.getBoundingClientRect();
+        const gameButtons = Array.from(doc.querySelectorAll('.play-topbar a, .play-topbar button'));
+        check(`Expanded global controls remain visible without overlapping game buttons at ${width}px`, doc.querySelector('#app').classList.contains('expanded-mode') && soundBounds.width === 44 && controls.left >= 0 && controls.right <= win.innerWidth + 1 && gameButtons.every(button => { const bounds = button.getBoundingClientRect(); return bounds.right <= controls.left || bounds.left >= controls.right || bounds.bottom <= controls.top || bounds.top >= controls.bottom; }));
+      }
+      globalSound.click(); await pause();
+      doc.querySelector('.back-link').click(); await pause();
+      win.location.hash = '#/2048'; await pause();
+      check('Muting in one game also mutes the other game', globalSound.getAttribute('aria-pressed') === 'false');
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();
