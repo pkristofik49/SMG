@@ -37,6 +37,23 @@
       const language = ref('cs');
       const languageMenuOpen = ref(false), languagePicker = ref(null), languageMenuButton = ref(null);
       const narrowViewportQuery = window.matchMedia('(max-width: 680px)');
+      let languageMenuAnimation = null, languageMenuTimer = null;
+      function cancelLanguageMenuAnimation() {
+        clearTimeout(languageMenuTimer);
+        languageMenuAnimation?.cancel(); languageMenuAnimation = null;
+      }
+      function animateLanguageMenu(element, done, entering) {
+        cancelLanguageMenuAnimation();
+        if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !element.animate) { done(); return; }
+        const hidden = { opacity: 0, transform: 'translateY(-8px)' };
+        const shown = { opacity: 1, transform: 'translateY(0)' };
+        languageMenuAnimation = element.animate(entering ? [hidden, shown] : [shown, hidden], {
+          duration: 180, easing: 'cubic-bezier(.22,.61,.36,1)', fill: 'both'
+        });
+        languageMenuTimer = setTimeout(() => { cancelLanguageMenuAnimation(); done(); }, 180);
+      }
+      const enterLanguageMenu = (element, done) => animateLanguageMenu(element, done, true);
+      const leaveLanguageMenu = (element, done) => animateLanguageMenu(element, done, false);
       function closeLanguageMenu(restoreFocus = false) {
         languageMenuOpen.value = false;
         if (restoreFocus) nextTick(() => languageMenuButton.value?.focus({ preventScroll: true }));
@@ -578,6 +595,7 @@
         }, { flush: 'post', immediate: true });
       });
       onUnmounted(() => {
+        cancelLanguageMenuAnimation();
         cancelExpandedAnimation();
         cancelGuidePanelAnimation();
         cancelGuideLayoutAnimation();
@@ -598,7 +616,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { enterLanguageMenu, leaveLanguageMenu, cancelLanguageMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

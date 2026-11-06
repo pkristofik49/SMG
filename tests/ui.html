@@ -492,7 +492,7 @@
         const options = Array.from(doc.querySelectorAll('.language-switch button'));
         const menuBounds = doc.querySelector('.language-switch').getBoundingClientRect();
         check(`Language menu is vertical and fits ${width}px`, languageToggle.getAttribute('aria-expanded') === 'true' && options.every((button, index) => index === 0 || button.getBoundingClientRect().top > options[index - 1].getBoundingClientRect().top) && menuBounds.left >= 0 && menuBounds.right <= win.innerWidth + 1 && win.getComputedStyle(options[0].querySelector('.language-name')).display !== 'none');
-        doc.querySelector('[data-language="de"]').click(); await pause();
+        doc.querySelector('[data-language="de"]').click(); await pause(220);
         check(`Language choice closes mobile menu and restores trigger focus at ${width}px`, doc.documentElement.lang === 'de' && languageToggle.getAttribute('aria-expanded') === 'false' && doc.activeElement === languageToggle && win.localStorage.getItem(speedyKeys[0]) === gameBeforeMobileLanguage);
       }
       frame.style.width = '390px'; await pause();
@@ -507,7 +507,7 @@
       doc.body.dispatchEvent(new win.PointerEvent('pointerdown', { bubbles: true })); await pause();
       check('Clicking outside closes the mobile language menu', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false');
       doc.querySelector('.language-menu-toggle').click(); await pause();
-      doc.querySelector('.new-game-button').focus(); await pause();
+      doc.querySelector('.new-game-button').focus(); await pause(220);
       check('Moving keyboard focus outside closes the language menu', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'false');
       frame.style.width = '1440px'; await pause();
       check('Desktop retains the same globe selector with a closed language list', win.getComputedStyle(doc.querySelector('.language-menu-toggle')).display !== 'none' && win.getComputedStyle(doc.querySelector('.language-switch')).display === 'none');
@@ -515,7 +515,7 @@
       frame.style.width = '390px'; await pause();
       frame.style.width = '1440px'; await pause();
       check('An open language list stays open when switching between mobile and desktop widths', doc.querySelector('.language-menu-toggle').getAttribute('aria-expanded') === 'true' && win.getComputedStyle(doc.querySelector('.language-switch')).display !== 'none');
-      sendKey('Escape'); await pause();
+      sendKey('Escape'); await pause(220);
       check('Escape also closes the desktop language list and restores focus', win.getComputedStyle(doc.querySelector('.language-switch')).display === 'none' && doc.activeElement === doc.querySelector('.language-menu-toggle'));
       if (doc.querySelector('.guide-toggle').getAttribute('aria-expanded') !== 'true') { doc.querySelector('.guide-toggle').click(); await pause(360); }
       const beforeGuideAnimation = win.localStorage.getItem(speedyKeys[0]);
@@ -631,6 +631,32 @@
       doc.querySelector('.back-link').click(); await pause();
       win.location.hash = '#/2048'; await pause();
       check('Muting in one game also mutes the other game', globalSound.getAttribute('aria-pressed') === 'false');
+      const languageList = doc.querySelector('.language-switch');
+      const globe = doc.querySelector('.language-menu-toggle');
+      for (const width of [390, 1440]) {
+        frame.style.width = `${width}px`; await pause();
+        globe.click(); await pause(40);
+        check(`Language list animates open at ${width}px`, languageList.getAnimations().length > 0 && !languageList.inert && languageList.getAttribute('aria-hidden') === 'false');
+        await pause(180);
+        sendKey('Escape'); await pause(40);
+        check(`Language list animates closed without remaining interactive at ${width}px`, languageList.getAnimations().length > 0 && languageList.inert && languageList.getAttribute('aria-hidden') === 'true' && doc.activeElement === globe);
+        await pause(180);
+        check(`Language list is fully hidden after closing at ${width}px`, win.getComputedStyle(languageList).display === 'none' && languageList.getAnimations().length === 0);
+      }
+      globe.click(); await pause(30);
+      globe.click(); await pause(30);
+      globe.click(); await pause(220);
+      check('Rapid language list toggles settle open without stale animations', globe.getAttribute('aria-expanded') === 'true' && !languageList.inert && win.getComputedStyle(languageList).display !== 'none' && languageList.getAnimations().length === 0);
+      doc.querySelector('[data-language="en"]').click(); await pause(220);
+      check('Choosing a language closes the animated list and restores focus', doc.documentElement.lang === 'en' && win.getComputedStyle(languageList).display === 'none' && doc.activeElement === globe);
+      const languageMatchMedia = win.matchMedia;
+      try {
+        win.matchMedia = query => query === '(prefers-reduced-motion: reduce)' ? { matches: true } : languageMatchMedia.call(win, query);
+        globe.click(); await pause();
+        check('Reduced motion opens the language list immediately', win.getComputedStyle(languageList).display !== 'none' && languageList.getAnimations().length === 0);
+        sendKey('Escape'); await pause();
+        check('Reduced motion closes the language list immediately', win.getComputedStyle(languageList).display === 'none' && languageList.getAnimations().length === 0);
+      } finally { win.matchMedia = languageMatchMedia; }
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();
