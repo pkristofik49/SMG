@@ -98,6 +98,12 @@
       const board = ref(Array(16).fill(0));
       const guideVisible = ref(true);
       const expanded = ref(false), expandedBoardSize = ref(500), playPage = ref(null);
+      const guidePanelTop = ref(76);
+      function updateGuidePosition() {
+        const button = playPage.value?.querySelector('.guide-toggle');
+        if (!button) return;
+        guidePanelTop.value = Math.max(12, Math.min(button.getBoundingClientRect().bottom + 12, window.innerHeight - 180));
+      }
       const guideLeaveStyle = ref({});
       let expandedAnimations = [], expandedAnimationTimer = null, expandedAnimationVersion = 0;
       let animationViewportWidth = window.innerWidth, animationViewportHeight = window.innerHeight;
@@ -110,6 +116,7 @@
           cancelExpandedAnimation(); cancelGuideLayoutAnimation();
         }
         rememberAnimationViewport();
+        updateGuidePosition();
       }
       function cancelExpandedAnimation() {
         expandedAnimationVersion++;
@@ -149,6 +156,7 @@
         guideLayoutAnimation?.cancel(); guideLayoutAnimation = null;
       }
       async function toggleGuide() {
+        updateGuidePosition();
         rememberAnimationViewport();
         cancelExpandedAnimation();
         const area = playPage.value?.querySelector('.game-area');
@@ -206,6 +214,7 @@
         }
         await nextTick();
         if (version !== expandedAnimationVersion || !boardWrap?.isConnected) return;
+        updateGuidePosition();
         if (before && boardWrap.animate && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
           const after = boardWrap.getBoundingClientRect();
           if (before.width > 0 && after.width > 0) {
@@ -511,6 +520,7 @@
         if (page.value === 'game') checkEnd(); else overlay.value = null;
         await nextTick();
         window.scrollTo(0, 0);
+        updateGuidePosition();
         if (page.value === 'game') { if (overlay.value) dialogPrimary.value?.focus(); else focusBoard(); }
         else document.getElementById('menu-title')?.focus({ preventScroll: true });
         resumeSpeedyTime();
@@ -539,6 +549,7 @@
         window.addEventListener('keydown', onKey);
         document.addEventListener('pointerdown', onLanguageOutside);
         document.addEventListener('keydown', onLanguageMenuKey);
+        document.addEventListener('scroll', updateGuidePosition, { passive: true });
         mobileLanguageQuery.addEventListener('change', onLanguageViewportChange);
         document.addEventListener('visibilitychange', onVisibilityChange);
         navigate();
@@ -576,11 +587,12 @@
         document.removeEventListener('visibilitychange', onVisibilityChange);
         document.removeEventListener('pointerdown', onLanguageOutside);
         document.removeEventListener('keydown', onLanguageMenuKey);
+        document.removeEventListener('scroll', updateGuidePosition);
         mobileLanguageQuery.removeEventListener('change', onLanguageViewportChange);
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

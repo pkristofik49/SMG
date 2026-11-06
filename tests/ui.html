@@ -560,6 +560,28 @@
       doc.querySelector('.fullscreen-button').click(); await pause(40);
       doc.querySelector('.direction-pad button').click(); await pause(220);
       check('Playing during a view transition settles it before moving tiles', doc.querySelector('.board-wrap').getAnimations().length === 0 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).moves === 1 && JSON.parse(win.localStorage.getItem(speedyKeys[0])).score === 68);
+      win.location.hash = '#/'; await pause();
+      win.location.hash = '#/2048'; await pause(360);
+      const beforeMobileHelp = win.localStorage.getItem(keys[0]);
+      for (const width of [320, 390, 680]) {
+        frame.style.width = `${width}px`; frame.style.height = '844px';
+        await pause(); win.dispatchEvent(new win.Event('resize')); await pause();
+        if (doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'true') { sendKey('h'); await pause(360); }
+        const before = doc.querySelector('.board').getBoundingClientRect();
+        const pageHeight = doc.documentElement.scrollHeight;
+        doc.querySelector('.guide-toggle').click(); await pause(360);
+        const panel = doc.querySelector('.game-guide');
+        const bounds = panel.getBoundingClientRect();
+        const after = doc.querySelector('.board').getBoundingClientRect();
+        check(`Normal mobile help floats inside the viewport at ${width}px`, !doc.querySelector('#app').classList.contains('expanded-mode') && win.getComputedStyle(panel).position === 'fixed' && bounds.left >= 0 && bounds.right <= win.innerWidth + 1 && bounds.top >= doc.querySelector('.guide-toggle').getBoundingClientRect().bottom && bounds.bottom <= win.innerHeight + 1);
+        check(`Mobile help does not move the board or extend the page at ${width}px`, Math.abs(before.left - after.left) < 1 && Math.abs(before.top - after.top) < 1 && Math.abs(before.width - after.width) < 1 && doc.documentElement.scrollHeight === pageHeight);
+        doc.querySelector('.guide-close').click(); await pause(360);
+        check(`Mobile help has a working close button at ${width}px`, win.getComputedStyle(panel).display === 'none' && doc.querySelector('.guide-toggle').getAttribute('aria-expanded') === 'false');
+      }
+      sendKey('h'); await pause(360);
+      frame.style.width = '1440px'; await pause(); win.dispatchEvent(new win.Event('resize')); await pause(360);
+      check('Normal desktop help remains a side column without a close button', win.getComputedStyle(doc.querySelector('.game-guide')).position !== 'fixed' && win.getComputedStyle(doc.querySelector('.guide-close')).display === 'none');
+      check('Mobile help preserves the saved game', win.localStorage.getItem(keys[0]) === beforeMobileHelp);
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();
