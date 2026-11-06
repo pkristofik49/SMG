@@ -10,6 +10,18 @@ Responzivní SPA s menu her a dvěma samostatnými variantami: **2048 classic** 
 
 Otevřete `index.html` v aktuálním Edge, Chrome, Firefoxu nebo Safari. Skripty jsou klasické, takže aplikace funguje i přímo z disku. Pro obvyklý vývoj a testování na telefonu doporučujeme adresář zpřístupnit statickým HTTP serverem (například již používaným lokálním serverem nebo IIS). Není potřeba nic sestavovat. Veškeré prostředky jsou lokální; po stažení projektu není potřeba připojení k internetu.
 
+## Instalace PWA a hraní offline
+
+Otevřete [Malou hernu](https://pkristofik49.github.io/SMG/) online v Edge nebo Chromu. Použijte tlačítko instalace aplikace v prohlížeči nebo odpovídající volbu v jeho menu. Na podporovaných zařízeních včetně Windows a Androidu se aplikace otevře ve vlastním okně. Není potřeba APK, obchod s aplikacemi, další JavaScriptová knihovna ani sestavení projektu.
+
+První úplné načtení online stáhne soubory aplikace. Po dokončení instalace service workeru fungují obě hry, překlady, palety i generované zvuky offline, také po zavření a opětovném otevření aplikace. Partie a nastavení zůstávají v místním úložišti. Vymazání dat webu nebo uvolnění úložiště prohlížečem může odstranit offline soubory i uložená data; pro obnovení offline souborů otevřete aplikaci znovu online. Pro ukládání offline souborů není samotná instalace PWA nutná.
+
+`manifest.webmanifest` definuje název aplikace, samostatné okno a relativní startovací URL, ID a rozsah. Relativní cesty podporují nasazení GitHub Pages pod `/SMG/` i kořen místního serveru. V `icons/` jsou PNG ikony 192 a 512 px, přizpůsobitelná ikona 512 px a ikona Apple touch 180 px podle stávající značky. `js/pwa.js` po načtení stránky registruje `sw.js`. Service worker vyžaduje v produkci HTTPS nebo při vývoji localhost; při otevření `index.html` přímo z disku hra dál funguje, ale offline podpora se neinstaluje.
+
+`sw.js` předem uloží celou verzi a soubory aplikace načítá z této cache. Nová verze se instaluje na pozadí a čeká, dokud se nezavřou všechna okna aplikace a karty prohlížeče používající starou verzi. Při dalším otevření se použije nová verze; během hry nedochází k vynucenému obnovení. Neúplné stažení instalaci přeruší a zachová funkční verzi. Úklid odstraňuje jen staré cache této aplikace v jejím rozsahu a nemění místní úložiště. Po obnovení připojení nebo návratu do viditelné aplikace registrace ověří aktualizace.
+
+Při změně souboru uvedeného v `SHELL` zvyšte při stejném nasazení `RELEASE` v `sw.js`. Nové offline soubory přidejte do `SHELL`. Verze neopakujte a během rozehrané hry nevynucujte aktivaci přes `skipWaiting()`. Pravidlo údržby je uvedeno také v `AGENTS.md`.
+
 ## Ovládání a chování
 
 - Menu: `#/`. 2048 classic: `#/2048` (původní odkaz zůstává funkční). 2048 speedy: `#/2048-speedy`. Funguje historie prohlížeče i přímý odkaz.
@@ -65,6 +77,12 @@ Otevřete `tests/index.html` v prohlížeči. Testy nepoužívají žádnou knih
 Ověřeno v Edge bez okna: testy pravidel i rozhraní včetně drah pohybu, sloučení, navazujících tahů, přerušení animace, všech šesti jazyků, přepínání a uchování jazyka, dialogů, přístupných popisů a místního formátu čísel. Kontroly šířek 320, 390, 768 a 1440 px proběhly ve všech šesti jazycích bez vodorovného přetékání. Fyzické dotykové zařízení nebylo k dispozici.
 
 Ruční kontrola rozhraní: šířky 320, 390, 768 a 1440 px, orientace na výšku i na šířku, gesta na skutečném dotykovém zařízení, navigace klávesou Tab, dialog nové hry, výhra, prohra, obnovení stránky a režim se zakázaným úložištěm.
+
+## Integrační testy PWA
+
+Na Windows spusťte v kořeni projektu v jednom terminálu `powershell -NoProfile -File .\tests\serve-pwa.ps1` a ve druhém `.\tests\run-pwa.ps1`. Server používá `http://localhost:8765/SMG/`; testovací skript otevře Edge bez okna v novém odděleném profilu a v reálném čase přečte výsledek z `tests/pwa.html`. Po dokončení zastavte testovací server pomocí Ctrl+C. Skripty používají Windows PowerShell a nainstalovaný Edge bez dalších závislostí.
+
+Testy kontrolují manifest a uložené soubory, navigaci a hraní při odpovědích serveru 503, obnovení jazyka a palety, čekající úplnou aktualizaci, neúplnou neúspěšnou aktualizaci a zachování cizích cache. Ovládací adresy serveru slouží jen místním testům a nejsou funkcemi aplikace. Testy PWA záměrně používají oddělený profil a dočasná místní data. Vlastní instalační rozhraní prohlížeče a instalaci na fyzickém zařízení je ještě nutné ověřit ručně.
 
 ## Údržba dokumentace
 

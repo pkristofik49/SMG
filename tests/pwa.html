@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>PWA tests</title></head>
+<body><h1>PWA tests</h1><pre id="results">RUNNING</pre>
+<iframe id="app" title="Arcade under test" style="width:390px;height:844px;border:0"></iframe>
+<script>
+  'use strict';
+  (async () => {
+    const lines = [];
+    let failures = 0;
+    const check = (name, passed) => { lines.push(`${passed ? 'PASS' : 'FAIL'} ${name}`); if (!passed) failures++; };
+    const pause = () => new Promise(resolve => setTimeout(resolve, 50));
+    async function until(condition) {
+      for (let step = 0; step < 200; step++) { if (await condition()) return; await pause(); }
+      throw new Error('Timed out waiting for PWA state');
+    }
+    const root = new URL('../', location.href);
+    const prefix = `little-arcade:${root.href}:`;
+    const frame = document.getElementById('app');
+    const control = action => fetch(`/__pwa-test__/${action}`, { cache: 'no-store' });
+    const loadApp = path => new Promise(resolve => { frame.addEventListener('load', resolve, { once: true }); frame.src = new URL(path, root).href; });
+    let registration;
+    try {
+      await control('online'); await control('release?version=v1');
+      await loadApp('./');
+      await until(async () => { registration = await navigator.serviceWorker.getRegistration(root.href); return registration?.active?.state === 'activated' && frame.contentWindow.navigator.serviceWorker.controller; });
+      const manifestResponse = await fetch(new URL('manifest.webmanifest', root));
+      const manifest = await manifestResponse.json();
+      check('Manifest installs the app under the project subpath', new URL(manifest.scope, root).href === root.href && new URL(manifest.start_url, root).href === root.href && manifest.display === 'standalone');
+      check('Manifest includes regular and maskable installation icons', manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
+      const cache = await caches.open(`${prefix}v1`);
+      const resources = await cache.keys();
+      check('The entire application shell is precached', resources.length === 15 && (await cache.match(new URL('js/app.js', root)))?.ok);
+      const unrelated = 'pwa-test-unrelated'; await caches.open(unrelated);
+      const keys = ['little-arcade.2048.v1', 'little-arcade.2048-speedy.v1'];
+      const initial = keys.map(key => frame.contentWindow.localStorage.getItem(key));
+      await control('offline');
+      check('The test server is unavailable for application requests', (await fetch(new URL('not-cached.txt', root))).status === 503);
+      await loadApp('./?offline=1#/2048');
+      await until(() => frame.contentDocument.querySelector('.board'));
+      check('Classic starts offline through a fresh navigation with a query and hash', frame.contentDocument.querySelectorAll('.tile').length === 16 && frame.contentDocument.querySelector('.game-variant').textContent === 'classic');
+      const board = JSON.parse(initial[0]).board;
+      const directionIndex = ['left', 'up', 'down', 'right'].findIndex(direction => frame.contentWindow.Game2048.move(board, direction).changed);
+      frame.contentDocument.querySelectorAll('.direction-pad button')[directionIndex].click();
+      await until(() => JSON.parse(frame.contentWindow.localStorage.getItem(keys[0])).moves > JSON.parse(initial[0]).moves);
+      check('Offline classic remains playable and saves moves locally', JSON.parse(frame.contentWindow.localStorage.getItem(keys[0])).moves > 0);
+      frame.contentDocument.querySelector('.palette-menu-toggle').click(); await pause();
+      frame.contentDocument.querySelector('[data-palette-option="dark"]').click();
+      frame.contentDocument.querySelector('[data-language="en"]').click(); await pause();
+      await loadApp('./index.html#/2048-speedy');
+      await until(() => frame.contentDocument.querySelector('.speedy-time'));
+      check('Speedy starts offline with saved language and palette', frame.contentDocument.documentElement.lang === 'en' && frame.contentDocument.documentElement.dataset.palette === 'dark' && frame.contentDocument.querySelectorAll('.tile').length === 16);
+      for (const resource of resources) check(`Cached resource remains available offline: ${new URL(resource.url).pathname}`, (await fetch(resource.url)).ok);
+      check('Service worker leaves unrelated requests outside its cache', (await fetch('/outside-project')).status === 503);
+      await control('online'); await control('release?version=v2');
+      await registration.update();
+      await until(() => registration.waiting?.state === 'installed');
+      check('A complete update waits without replacing the running release', registration.active.scriptURL.endsWith('/SMG/sw.js') && !!registration.waiting && (await caches.keys()).includes(`${prefix}v1`) && (await caches.keys()).includes(`${prefix}v2`));
+      check('An update does not reload the active game', !!frame.contentDocument.querySelector('.speedy-time') && frame.contentDocument.documentElement.dataset.palette === 'dark');
+      await control('release?version=v3&fail=true');
+      await registration.update();
+      await until(() => !registration.installing);
+      check('A failed update keeps the current release and removes its incomplete cache', (await caches.keys()).includes(`${prefix}v1`) && !(await caches.keys()).includes(`${prefix}v3`));
+      check('Other cache namespaces are preserved', (await caches.keys()).includes(unrelated));
+    } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
+    finally {
+      await control('online'); await control('release?version=v1');
+      if (registration) await registration.unregister();
+      for (const name of await caches.keys()) if (name.startsWith(prefix) || name === 'pwa-test-unrelated') await caches.delete(name);
+      lines.push(`\nFailures: ${failures}`);
+      document.getElementById('results').textContent = lines.join('\n');
+      document.title = failures ? 'FAIL PWA' : 'PASS PWA';
+    }
+  })();
+</script></body></html>

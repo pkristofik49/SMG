@@ -10,6 +10,18 @@ A responsive single-page application with a game menu and two independent varian
 
 Open `index.html` in a current version of Edge, Chrome, Firefox, or Safari. The application uses classic scripts and also works directly from disk. For regular development and testing on a phone, serve the directory through a static HTTP server, such as an existing local server or IIS. There is nothing to build. All assets are local, so an internet connection is not required after downloading the project.
 
+## Installing and using the PWA offline
+
+Open [Little Arcade](https://pkristofik49.github.io/SMG/) online in Edge or Chrome. Use the browser's install-app button or install option in its menu. The app opens in its own window on supported devices, including Windows and Android. No APK, app store, additional JavaScript library, or build step is needed.
+
+The first complete online load downloads the application shell. Once the service worker has finished installing, both games, translations, palettes, and generated sounds work offline, including after closing and reopening the app. Saved games and settings remain in local storage. Clearing site data or browser eviction can remove offline files and saved data; open the app online again to restore the offline shell. PWA installation is optional for offline caching.
+
+`manifest.webmanifest` defines the app name, standalone display, and relative start URL, ID, and scope. The relative paths support both the `/SMG/` GitHub Pages deployment and a local server root. `icons/` contains 192 px and 512 px PNG icons, a 512 px maskable icon, and a 180 px Apple touch icon based on the existing brand. `js/pwa.js` registers `sw.js` after page load. Service workers require HTTPS in production or localhost for development; opening `index.html` directly from disk still runs the game but does not install offline support.
+
+`sw.js` precaches the entire release and serves application files from that cache. A new release installs in the background and waits until all windows and browser tabs using the old release close. Reopening then uses the new version; there is no forced reload during a game. An incomplete download fails installation and preserves the working release. Cleanup removes only this application's old release caches within its own scope, and leaves local storage unchanged. On reconnecting or returning to a visible app, the registration checks for updates.
+
+Whenever a file listed in `SHELL` changes, bump `RELEASE` in `sw.js` in the same deployment. Add any new offline assets to `SHELL`. Keep versions unique and do not activate updates with `skipWaiting()` during a running game. This maintenance rule is also recorded in `AGENTS.md`.
+
 ## Controls and behavior
 
 - Menu: `#/`. 2048 classic: `#/2048` (the original link remains supported). 2048 speedy: `#/2048-speedy`. Browser history and direct links are supported.
@@ -65,6 +77,12 @@ Open `tests/index.html` in a browser. The tests require no library. They cover a
 Verified in headless Edge: game rules and interface behavior, including movement paths, merging, queued moves, animation cancellation, all six languages, switching and remembering language, dialogs, accessible descriptions, and localized number formatting. Widths of 320, 390, 768, and 1440 px were checked in all six languages without horizontal overflow. A physical touch device was not available.
 
 Manual interface checks: widths of 320, 390, 768, and 1440 px; portrait and landscape orientation; gestures on a physical touch device; Tab navigation; new-game confirmation; winning; losing; reloading; and unavailable browser storage.
+
+## PWA integration tests
+
+On Windows, run `powershell -NoProfile -File .\tests\serve-pwa.ps1` from the project root in one terminal, then `.\tests\run-pwa.ps1` in another. The server uses `http://localhost:8765/SMG/`; the runner launches headless Edge in a fresh isolated profile and reads the result from `tests/pwa.html` in real time. Stop the test server with Ctrl+C when finished. These scripts use Windows PowerShell and the installed Edge browser without additional dependencies.
+
+The tests check the manifest and cached assets, navigation and gameplay while the server returns 503, language and palette restoration, a waiting complete update, a failed incomplete update, and preservation of unrelated caches. The server's control endpoints are local test fixtures and are not application features. PWA tests intentionally use a separate profile and temporary local storage. The browser's native installation UI and physical-device installation still need manual verification.
 
 ## Documentation maintenance
 
