@@ -92,7 +92,7 @@ h1[tabindex="-1"]:focus{outline:none}
 .expanded-mode>.site-header{display:contents}
 .expanded-mode .global-controls{position:fixed;inset-block-start:12px;inset-inline-end:12px;z-index:30}
 .expanded-mode .play-page{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;gap:12px;max-width:none;margin:0;padding:12px;background:#f5f3ed;overflow:auto}
-.expanded-mode .play-topbar{flex-shrink:0;padding-inline-end:104px}
+.expanded-mode .play-topbar{flex-shrink:0;padding-inline-end:156px}
 .expanded-mode .play-layout,.expanded-mode .play-layout.guide-hidden{display:flex;flex:1;align-items:center;justify-content:center;min-height:0;max-width:none;width:100%;margin:0;gap:0}
 .expanded-mode .game-area{width:max(250px,var(--expanded-board-size));max-width:100%;flex-shrink:0;container-type:inline-size}
 .expanded-mode .board-wrap{width:var(--expanded-board-size);max-width:100%;margin-inline:auto;container-type:inline-size}
@@ -117,6 +117,14 @@ h1[tabindex="-1"]:focus{outline:none}
 .expanded-mode .board-overlay p{font-size:clamp(10px,3cqw,14px)}
 .fullscreen-button[aria-pressed="true"]{background:#dce7b8;border-color:#9eaf79}
 .guide-close{display:none}
+@media(max-width:680px){
+  .expanded-mode{--toolbar-size:44px;--toolbar-gap:4px}
+  .expanded-mode .global-controls{gap:var(--toolbar-gap)}
+  .expanded-mode .play-topbar{flex-wrap:nowrap;gap:var(--toolbar-gap);padding-inline-end:calc(3 * var(--toolbar-size) + 3 * var(--toolbar-gap))}
+  .expanded-mode .topbar-actions{flex-wrap:nowrap;gap:var(--toolbar-gap)}
+  .expanded-mode .play-topbar .topbar-button,.expanded-mode .global-controls .icon-button,.expanded-mode .global-controls>.sound-button{width:var(--toolbar-size);height:var(--toolbar-size);min-height:var(--toolbar-size);flex:0 0 var(--toolbar-size);padding:calc((var(--toolbar-size) - 24px) / 2)}
+}
+@media(max-width:355px){.expanded-mode{--toolbar-size:40px;--toolbar-gap:2px}}
 .expanded-mode .game-guide .guide-close{display:inline-flex;position:sticky;top:0;margin-inline-start:auto;margin-bottom:10px;z-index:1}
 @media(max-width:680px){
   .play-layout.guide-hidden{max-width:480px}

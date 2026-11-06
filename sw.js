@@ -1,7 +1,7 @@
 'use strict';
 
 // Bump this version whenever a cached application file changes.
-const RELEASE = 'v1';
+const RELEASE = 'v2';
 const CACHE_PREFIX = `little-arcade:${self.registration.scope}:`;
 const CACHE_NAME = `${CACHE_PREFIX}${RELEASE}`;
 const appUrl = path => new URL(path, self.registration.scope).href;
