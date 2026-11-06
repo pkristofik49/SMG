@@ -89,10 +89,10 @@
       move: slide,
       blocked() {
         stop();
-        tone(280, 250, 0.045, 0.035, 0, 'triangle');
-        tone(220, 200, 0.045, 0.028, 0.065, 'triangle');
+        tone(280, 250, 0.045, 0.075, 0, 'triangle');
+        tone(220, 200, 0.045, 0.060, 0.065, 'triangle');
       },
-      merge() { tone(420, 380, 0.12, 0.018); tone(630, 570, 0.14, 0.012, 0.035); },
+      merge() { tone(420, 380, 0.12, 0.060); tone(630, 570, 0.14, 0.042, 0.035); },
       stop,
       dispose() {
         revision++; enabled = false; stop();
