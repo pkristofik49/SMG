@@ -19,6 +19,8 @@
   <script defer src="js/translations.js"></script>
   <script defer src="js/audio.js"></script>
   <script defer src="js/version.js"></script>
+  <script defer src="js/sudoku.js"></script>
+  <script defer src="js/sudoku-app.js"></script>
   <script defer src="js/app.js"></script>
   <script defer src="js/pwa.js"></script>
 </head>
@@ -58,7 +60,8 @@
           <a v-for="game in games" :key="game.id" :href="game.hash" class="game-card" :data-game="game.id">
             <div class="card-art" aria-hidden="true">
               <span class="art-ring ring-one"></span><span class="art-ring ring-two"></span>
-              <div v-if="game.id === 'speedy'" class="speedy-preview">
+              <div v-if="game.id === 'sudoku'" class="sudoku-preview" aria-hidden="true"><span v-for="cell in 81" :key="cell" :class="{ 'preview-block-right': cell % 9 === 3 || cell % 9 === 6, 'preview-block-bottom': Math.floor((cell - 1) / 9) === 2 || Math.floor((cell - 1) / 9) === 5 }">{{ cell % 3 === 0 || cell % 7 === 0 ? formatTile((Math.floor((cell - 1) / 9) * 3 + Math.floor((cell - 1) / 27) + (cell - 1) % 9) % 9 + 1) : '' }}</span></div>
+              <div v-else-if="game.id === 'speedy'" class="speedy-preview">
                 <div class="speedy-preview-clock"><svg viewBox="0 0 24 24" width="25" height="25" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="14" r="8"/><path d="M9 2h6M12 2v4m6 2 2-2M12 10v4l3 2"/></svg><span>{{ t('speedy.remaining', { time: formatTile(2) }) }}</span></div>
                 <div class="speedy-preview-stack"><span class="speed-line line-one"></span><span class="speed-line line-two"></span><span class="speed-line line-three"></span><span class="speedy-sample sample-back">{{ formatTile(2) }}</span><span class="speedy-sample sample-front">{{ formatTile(2048) }}</span><span class="speedy-sample sample-small">{{ formatTile(4) }}</span><svg class="speedy-bolt" viewBox="0 0 24 24" width="28" height="28" fill="currentColor"><path d="m14 2-10 12h7l-1 8 10-12h-7Z"/></svg></div>
                 <div class="speedy-preview-track"><span></span></div>
@@ -69,11 +72,11 @@
             </div>
             <div class="card-content">
               <div class="card-labels"><span class="tag">{{ t('card.category') }}</span><span class="time-label">{{ t('card.duration') }}</span></div>
-              <h3><span>{{ formatTile(2048) }}<small class="card-variant">{{ t(`game.variant.${game.id}`) }}</small></span><span class="card-arrow" aria-hidden="true">↗</span></h3>
-              <p>{{ t(game.id === 'speedy' ? 'speedy.rules' : game.id === 'extended' ? 'extended.rules' : 'card.description') }}<br>{{ t('card.goal') }}</p>
+              <h3 :class="{ 'sudoku-card-title': game.id === 'sudoku' }"><span>{{ game.id === 'sudoku' ? 'Sudoku' : formatTile(2048) }}<small v-if="game.id !== 'sudoku'" class="card-variant">{{ t(`game.variant.${game.id}`) }}</small></span><span class="card-arrow" aria-hidden="true">↗</span></h3>
+              <p>{{ t(game.id === 'sudoku' ? 'sudoku.description' : game.id === 'speedy' ? 'speedy.rules' : game.id === 'extended' ? 'extended.rules' : 'card.description') }}<br>{{ t(game.id === 'sudoku' ? 'sudoku.goal' : 'card.goal') }}</p>
               <dl class="card-scores">
-                <div><dt>{{ t('card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
-                <div><dt>{{ t('card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
+                <div><dt>{{ t(game.id === 'sudoku' ? 'sudoku.filled' : 'card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
+                <div><dt>{{ t(game.id === 'sudoku' ? 'sudoku.completed' : 'card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
               </dl>
               <span class="card-play">{{ t(gameStates[game.id]?.moves > 0 ? 'card.continue' : 'card.play') }} <span aria-hidden="true">→</span></span>
             </div>
@@ -89,6 +92,8 @@
       </section>
       <div class="menu-benefits"><span><b aria-hidden="true">↔</b> {{ t('benefits.devices') }}</span><span><b aria-hidden="true">◎</b> {{ t('benefits.account') }}</span><span><b aria-hidden="true">↳</b> {{ t('benefits.pace') }}</span></div>
     </main>
+
+    <sudoku-game v-else-if="page === 'sudoku'" :t="t" :format-tile="formatTile" :language="language" @change="refreshSudoku" @effect="sudokuEffect"></sudoku-game>
 
     <main v-else ref="playPage" class="play-page" :class="{ 'extended-game': boardSize === 5 }" :style="{ '--board-size': boardSize, '--guide-top': `${guidePanelTop}px`, ...(expanded ? { '--expanded-board-size': `${expandedBoardSize}px` } : {}) }">
       <div class="play-topbar">

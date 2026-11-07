@@ -36,7 +36,7 @@
       check('Manifest includes regular and maskable installation icons', manifest.icons.some(icon => icon.sizes === '192x192') && manifest.icons.some(icon => icon.sizes === '512x512' && icon.purpose === 'maskable'));
       const cache = await caches.open(`${prefix}v1`);
       const resources = await cache.keys();
-      check('The entire application shell is precached', resources.length === 17 && (await cache.match(new URL('js/app.js', root)))?.ok && (await cache.match(new URL('js/version.js', root)))?.ok);
+      check('The entire application shell is precached', resources.length === 19 && (await cache.match(new URL('js/app.js', root)))?.ok && (await cache.match(new URL('js/version.js', root)))?.ok);
       const unrelated = 'pwa-test-unrelated'; await caches.open(unrelated);
       const keys = ['little-arcade.2048.v1', 'little-arcade.2048-speedy.v1'];
       const initial = keys.map(key => frame.contentWindow.localStorage.getItem(key));
@@ -73,6 +73,18 @@
       frame.contentDocument.querySelectorAll('.direction-pad button')[extendedDirection].click();
       await until(() => JSON.parse(frame.contentWindow.localStorage.getItem(extendedSaveKey)).moves === extendedBefore.moves + 1);
       check('Extended saves valid 25-cell moves offline', JSON.parse(frame.contentWindow.localStorage.getItem(extendedSaveKey)).board.length === 25);
+      await loadApp('./?sudoku-offline=1#/sudoku');
+      await until(() => frame.contentDocument.querySelectorAll('.sudoku-cell').length === 81);
+      const sudokuKey = 'little-arcade.sudoku.v1';
+      const sudokuState = JSON.parse(frame.contentWindow.localStorage.getItem(sudokuKey));
+      const sudokuResult = frame.contentWindow.SudokuRules.search(sudokuState.puzzle);
+      check('Sudoku generates a unique puzzle during a fresh offline launch', sudokuResult.count === 1);
+      const sudokuCell = sudokuState.puzzle.findIndex(value => !value);
+      frame.contentDocument.querySelectorAll('.sudoku-cell')[sudokuCell].click(); await pause();
+      frame.contentDocument.querySelectorAll('.sudoku-digits button')[sudokuResult.solution[sudokuCell] - 1].click(); await pause();
+      await loadApp('./index.html#/sudoku');
+      await until(() => frame.contentDocument.querySelectorAll('.sudoku-cell').length === 81);
+      check('Sudoku restores its saved offline progress', JSON.parse(frame.contentWindow.localStorage.getItem(sudokuKey)).values[sudokuCell] === sudokuResult.solution[sudokuCell]);
       await loadApp('./index.html#/2048-speedy');
       await until(() => frame.contentDocument.querySelector('.speedy-time'));
       await control('online'); await control('release?version=v2');

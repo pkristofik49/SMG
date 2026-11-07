@@ -12,7 +12,8 @@
   const GAMES = [
     { id: 'classic', size: 4, hash: '#/2048', saveKey: SAVE_KEY, bestKey: BEST_KEY },
     { id: 'speedy', size: 4, hash: '#/2048-speedy', saveKey: 'little-arcade.2048-speedy.v1', bestKey: 'little-arcade.2048-speedy.best' },
-    { id: 'extended', size: 5, hash: '#/2048-extended', saveKey: 'little-arcade.2048-extended.v1', bestKey: 'little-arcade.2048-extended.best' }
+    { id: 'extended', size: 5, hash: '#/2048-extended', saveKey: 'little-arcade.2048-extended.v1', bestKey: 'little-arcade.2048-extended.best' },
+    { id: 'sudoku', size: 9, hash: '#/sudoku', saveKey: 'little-arcade.sudoku.v1', bestKey: 'little-arcade.sudoku.completed' }
   ];
   const routeGame = () => GAMES.find(game => game.hash === location.hash);
   const translations = ArcadeTranslations;
@@ -26,6 +27,7 @@
     return legacy;
   }
   createApp({
+    components: { SudokuGame },
     setup() {
       const appVersion = ArcadeVersion;
       const appCommit = ref('');
@@ -38,7 +40,7 @@
           if (metadata.version === appVersion && /^[0-9a-f]{40}$/.test(metadata.commit)) appCommit.value = metadata.commit.slice(0, 7);
         } catch { /* Keep the version visible when deployment metadata is unavailable. */ }
       }
-      const page = ref(routeGame() ? 'game' : 'menu');
+      const page = ref(routeGame()?.id === 'sudoku' ? 'sudoku' : routeGame() ? 'game' : 'menu');
       const games = GAMES;
       const activeGame = ref(routeGame()?.id || 'classic');
       const currentGame = computed(() => games.find(game => game.id === activeGame.value));
@@ -187,7 +189,7 @@
       watch([language, page, activeGame], () => {
         document.documentElement.lang = language.value;
         document.documentElement.dir = languages.find(option => option.code === language.value).direction || 'ltr';
-        document.title = page.value === 'game' ? t('meta.gameTitle', {
+        document.title = page.value === 'sudoku' ? t('meta.gameTitle', { game: 'Sudoku' }) : page.value === 'game' ? t('meta.gameTitle', {
           game: `${formatTile(2048)} ${t(`game.variant.${activeGame.value}`)}`
         }) : t('meta.menuTitle');
         document.querySelector('meta[name="description"]').content = t('meta.description');
@@ -429,8 +431,16 @@
           timeBudgetMs.value = Number.isFinite(state.timeBudgetMs) && state.timeBudgetMs >= storedTime && state.timeBudgetMs > 0 ? state.timeBudgetMs : Math.max(2000, storedTime);
         }
       }
+      function refreshSudoku(summary) {
+        if (summary) { gameStates.value.sudoku = summary; return; }
+        let state = null, completed = 0;
+        try { state = JSON.parse(localStorage.getItem('little-arcade.sudoku.v1')); completed = Number(localStorage.getItem('little-arcade.sudoku.completed')) || 0; } catch {}
+        gameStates.value.sudoku = SudokuRules.validState(state) ? { score: state.values.filter(Boolean).length, best: completed, moves: state.values.filter((value, index) => value && !state.puzzle[index]).length } : { score: 0, best: completed, moves: 0 };
+      }
+      function sudokuEffect(effect) { sound[effect]?.(); }
       function activateGame(id) {
         activeGame.value = id;
+        if (id === 'sudoku') return;
         const state = gameStates.value[id];
         best.value = state.best;
         previous.value = state.previous;
@@ -643,10 +653,10 @@
         const selectedGame = routeGame();
         rememberGameView();
         viewReady = false;
-        page.value = selectedGame ? 'game' : 'menu';
-        if (!selectedGame) expanded.value = false;
+        page.value = selectedGame?.id === 'sudoku' ? 'sudoku' : selectedGame ? 'game' : 'menu';
+        if (!selectedGame || selectedGame.id === 'sudoku') expanded.value = false;
         if (selectedGame && selectedGame.id !== activeGame.value) activateGame(selectedGame.id);
-        if (selectedGame) {
+        if (selectedGame && selectedGame.id !== 'sudoku') {
           const view = gameViews[selectedGame.id];
           expanded.value = view?.expanded ?? false;
           guideVisible.value = view?.guideVisible ?? true;
@@ -667,6 +677,7 @@
       onMounted(() => {
         loadCommitId();
         for (const game of games) {
+          if (game.id === 'sudoku') { refreshSudoku(); continue; }
           let saved = null, record = 0;
           try {
             const storedBest = Number(game.id === 'classic' ? readStored(game.bestKey, translations.legacyStorageKeys.best) : localStorage.getItem(game.bestKey));
@@ -733,7 +744,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { boardSize, appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { refreshSudoku, sudokuEffect, boardSize, appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }

@@ -15,7 +15,7 @@
   }
   frame.addEventListener('load', async () => {
     const win = frame.contentWindow;
-    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound', 'little-arcade.2048-extended.v1', 'little-arcade.2048-extended.best'];
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound', 'little-arcade.2048-extended.v1', 'little-arcade.2048-extended.best', 'little-arcade.sudoku.v1', 'little-arcade.sudoku.completed'];
     const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
     const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
     let originals;
@@ -357,7 +357,7 @@
       win.localStorage.setItem(speedyKeys[0], speedyGame);
       win.localStorage.setItem(speedyKeys[1], '512');
       await reload(); doc = frame.contentDocument;
-      check('Menu offers classic and speedy with independent scores', doc.querySelectorAll('.game-card').length === 3 && doc.querySelector('[data-game="classic"] h3').textContent.includes('classic') && doc.querySelector('[data-game="speedy"] h3').textContent.includes('speedy') && doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '512');
+      check('Menu offers classic and speedy with independent scores', doc.querySelectorAll('.game-card').length === 4 && doc.querySelector('[data-game="classic"] h3').textContent.includes('classic') && doc.querySelector('[data-game="speedy"] h3').textContent.includes('speedy') && doc.querySelector('[data-game="classic"] dd').textContent === '64' && doc.querySelector('[data-game="speedy"] dd').textContent === '512');
       doc.querySelector('[data-game="speedy"]').click(); await pause();
       check('Speedy loads its own game, title and record', win.location.hash === '#/2048-speedy' && doc.querySelector('.game-variant').textContent === 'speedy' && doc.title.includes('2048 speedy') && doc.querySelector('.scores strong').textContent === '512');
       doc.querySelector('.direction-pad button').click(); await pause(220);
@@ -834,7 +834,7 @@
       }
       const classicBeforeExtended = JSON.parse(win.localStorage.getItem(keys[0]));
       const speedyBeforeExtended = JSON.parse(win.localStorage.getItem(speedyKeys[0]));
-      check('Menu offers Extended as the third game and retains four equal cards', doc.querySelectorAll('.game-card').length === 3 && doc.querySelectorAll('.coming-card').length === 1 && doc.querySelector('[data-game="extended"] .mini-board').children.length === 25);
+      check('Menu offers Extended as the third game and retains four equal cards', doc.querySelectorAll('.game-card').length === 4 && doc.querySelectorAll('.coming-card').length === 0 && doc.querySelector('[data-game="extended"] .mini-board').children.length === 25);
       win.location.hash = '#/2048-extended'; await pause();
       win.localStorage.setItem(keys[6], JSON.stringify({ ...seeded, board: [2, 2, ...Array(23).fill(0)] }));
       await reload(); doc = frame.contentDocument;
@@ -869,6 +869,50 @@
       await reload(); doc = frame.contentDocument;
       doc.querySelector('.direction-pad button').click(); await pause(220);
       check('Extended offers the Classic win dialog at 2048', doc.querySelector('[role="dialog"] h2')?.textContent === win.ArcadeTranslations[doc.documentElement.lang]['dialog.won.title']);
+      win.location.hash = '#/'; await pause();
+      check('Menu offers Sudoku as the fourth game', !!doc.querySelector('[data-game="sudoku"]') && doc.querySelector('[data-game="sudoku"] h3>span:first-child').textContent === 'Sudoku');
+      doc.querySelector('[data-game="sudoku"]').click(); await pause(220);
+      check('Sudoku opens with 81 cells and fixed clues', doc.querySelectorAll('.sudoku-cell').length === 81 && doc.querySelectorAll('.sudoku-cell.given').length >= 28 && !doc.querySelector('.board'));
+      const sudokuPuzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'.split('').map(Number);
+      const sudokuSolution = win.SudokuRules.search(sudokuPuzzle).solution;
+      win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:sudokuPuzzle, notes:Array(81).fill(0), difficulty:'medium' }));
+      await reload(); doc = frame.contentDocument;
+      let sudokuCells = doc.querySelectorAll('.sudoku-cell');
+      sudokuCells[0].click(); await pause();
+      check('Sudoku clues cannot be edited', Array.from(doc.querySelectorAll('.sudoku-digits button')).every(button => button.disabled));
+      sudokuCells[2].click(); await pause(); doc.querySelectorAll('.sudoku-digits button')[3].click(); await pause();
+      check('Sudoku accepts digits and saves immediately', JSON.parse(win.localStorage.getItem(keys[8])).values[2] === 4);
+      doc.querySelectorAll('.sudoku-digits button')[4].click(); await pause();
+      check('Sudoku highlights repeated numbers without changing clues', doc.querySelectorAll('.sudoku-cell.conflict').length >= 2 && JSON.parse(win.localStorage.getItem(keys[8])).values[0] === 5);
+      doc.querySelector('.sudoku-tools button:last-child').click(); await pause();
+      check('Sudoku undo restores the previous entry', JSON.parse(win.localStorage.getItem(keys[8])).values[2] === 4 && !doc.querySelector('.sudoku-cell.conflict'));
+      sudokuCells[3].click(); await pause(); doc.querySelector('.sudoku-tools button:nth-child(2)').click(); await pause(); sendKey('3'); await pause();
+      check('Sudoku pencil notes do not fill the cell', JSON.parse(win.localStorage.getItem(keys[8])).notes[3] === 4 && JSON.parse(win.localStorage.getItem(keys[8])).values[3] === 0);
+      await reload(); doc = frame.contentDocument;
+      check('Sudoku restores values and notes after reload', JSON.parse(win.localStorage.getItem(keys[8])).values[2] === 4 && JSON.parse(win.localStorage.getItem(keys[8])).notes[3] === 4 && doc.querySelectorAll('.sudoku-cell').length === 81);
+      doc.querySelectorAll('.sudoku-cell')[3].focus(); sendKey('Delete'); await pause();
+      check('Sudoku Delete clears pencil notes', JSON.parse(win.localStorage.getItem(keys[8])).notes[3] === 0);
+      const sudokuBeforeCancel = win.localStorage.getItem(keys[8]);
+      sendKey('n'); await pause();
+      check('Sudoku N opens restart confirmation', !!doc.querySelector('.sudoku-dialog'));
+      doc.querySelector('.sudoku-dialog select').focus(); sendKey('Escape'); await pause();
+      check('Sudoku Escape cancels without changing the puzzle', !doc.querySelector('.sudoku-dialog') && win.localStorage.getItem(keys[8]) === sudokuBeforeCancel);
+      for (const width of [320, 390, 768, 1440]) {
+        frame.style.width = `${width}px`; frame.style.height = '900px'; await pause();
+        const cells = Array.from(doc.querySelectorAll('.sudoku-cell'), cell => cell.getBoundingClientRect());
+        check(`Sudoku retains nine columns without overflow at ${width}px`, Math.abs(cells[0].top - cells[8].top) < 1 && cells[9].top > cells[0].top && doc.documentElement.scrollWidth <= win.innerWidth);
+      }
+      sendKey('n'); await pause(); doc.querySelector('.sudoku-dialog select').value = 'easy'; doc.querySelector('.sudoku-dialog select').dispatchEvent(new win.Event('change', { bubbles:true })); doc.querySelector('.sudoku-dialog .primary-button').click(); await pause(220);
+      check('Sudoku starts a new unique puzzle at the selected difficulty', JSON.parse(win.localStorage.getItem(keys[8])).difficulty === 'easy' && win.SudokuRules.search(JSON.parse(win.localStorage.getItem(keys[8])).puzzle).count === 1);
+      const almostSolved = sudokuSolution.slice(); almostSolved[2] = 0;
+      win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:almostSolved, notes:Array(81).fill(0), difficulty:'medium' }));
+      const solvedBefore = Number(win.localStorage.getItem(keys[9])) || 0;
+      await reload(); doc = frame.contentDocument; doc.querySelectorAll('.sudoku-cell')[2].click(); await pause(); doc.querySelectorAll('.sudoku-digits button')[3].click(); await pause();
+      check('Sudoku recognizes completion and increments its own record once', Number(win.localStorage.getItem(keys[9])) === solvedBefore + 1 && doc.querySelectorAll('.sudoku-digits button:disabled').length === 9);
+      await reload(); doc = frame.contentDocument;
+      check('Reloading completed Sudoku does not increment the record again', Number(win.localStorage.getItem(keys[9])) === solvedBefore + 1);
+      win.location.hash = '#/'; await pause();
+      check('Sudoku returns to the shared menu and footer', !!doc.querySelector('[data-game="sudoku"]') && doc.querySelector('footer').firstElementChild.textContent === 'SMG');
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

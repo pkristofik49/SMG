@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sudoku tests</title></head><body><pre id="results"></pre><script src="../js/sudoku.js"></script><script>
+'use strict';
+const lines = []; let failures = 0;
+function test(name, run) { try { run(); lines.push('PASS ' + name); } catch (error) { failures++; lines.push('FAIL ' + name + ': ' + error.message); } }
+function assert(value) { if (!value) throw new Error('Assertion failed'); }
+const puzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'.split('').map(Number);
+test('Known puzzle has one valid solution', () => { const result = SudokuRules.search(puzzle); assert(result.count === 1 && result.solution.every(Boolean) && SudokuRules.conflicts(result.solution).size === 0); assert(puzzle[2] === 0); });
+test('Conflicting clues cannot be solved', () => { const bad = puzzle.slice(); bad[2] = 5; assert(SudokuRules.search(bad).count === 0); assert(SudokuRules.conflicts(bad).has(0) && SudokuRules.conflicts(bad).has(2)); });
+test('Empty board has multiple solutions and search stops at two', () => assert(SudokuRules.search(Array(81).fill(0)).count === 2));
+test('Malformed board is rejected', () => { assert(SudokuRules.search(Array(80).fill(0)).count === 0); assert(!SudokuRules.validBoard(Array(81).fill(10))); });
+for (const difficulty of ['easy','medium','hard']) test('Generated ' + difficulty + ' puzzles have one solution and preserve clues', () => {
+  for (let sample = 0; sample < 3; sample++) { const { puzzle, solution } = SudokuRules.generate(difficulty); const result = SudokuRules.search(puzzle); assert(result.count === 1 && JSON.stringify(result.solution) === JSON.stringify(solution)); assert(puzzle.every((value, index) => !value || value === solution[index])); assert(puzzle.filter(Boolean).length >= { easy:42,medium:34,hard:28 }[difficulty] && puzzle.filter(Boolean).length < 81); }
+});
+test('Saved state validates clues, notes and difficulty', () => { const state = { puzzle, values: puzzle.slice(), notes: Array(81).fill(0), difficulty:'medium' }; assert(SudokuRules.validState(state)); assert(!SudokuRules.validState({ ...state, difficulty:'invalid' })); const values = puzzle.slice(); values[0] = 1; assert(!SudokuRules.validState({ ...state, values })); assert(!SudokuRules.validState({ ...state, notes: Array(81).fill(512) })); });
+test('All peer sets contain exactly twenty other cells', () => assert(SudokuRules.peers.every((peers, index) => peers.length === 20 && !peers.includes(index))));
+lines.push('\nFailures: ' + failures); document.getElementById('results').textContent = lines.join('\n'); document.title = failures ? 'FAIL Sudoku' : 'PASS Sudoku';
+</script></body></html>
