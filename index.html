@@ -75,9 +75,10 @@
               <div class="card-labels"><span class="tag">{{ t('card.category') }}</span><span class="time-label">{{ t('card.duration') }}</span></div>
               <h3 :class="{ 'sudoku-card-title': game.id === 'sudoku' }"><span>{{ game.id === 'sudoku' ? 'Sudoku' : formatTile(2048) }}<small v-if="game.id !== 'sudoku'" class="card-variant">{{ t(`game.variant.${game.id}`) }}</small></span><span class="card-arrow" aria-hidden="true">↗</span></h3>
               <p>{{ t(game.id === 'sudoku' ? 'sudoku.description' : game.id === 'speedy' ? 'speedy.rules' : game.id === 'extended' ? 'extended.rules' : 'card.description') }}<br>{{ t(game.id === 'sudoku' ? 'sudoku.goal' : 'card.goal') }}</p>
-              <dl class="card-scores">
-                <div><dt>{{ t(game.id === 'sudoku' ? 'sudoku.filled' : 'card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
-                <div><dt>{{ t(game.id === 'sudoku' ? 'sudoku.completed' : 'card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
+              <dl v-if="game.id === 'sudoku'" class="card-scores sudoku-card-times" :aria-label="t('sudoku.bestTimes')"><div v-for="level in ['easy','medium','hard']" :key="level" :data-card-record-level="level"><dt>{{ t('sudoku.' + level) }}</dt><dd dir="ltr">{{ formatDuration(sudokuBestTimes[level]) }}</dd></div></dl>
+              <dl v-else class="card-scores">
+                <div><dt>{{ t('card.currentScore') }}</dt><dd>{{ format(gameStates[game.id]?.score || 0) }}</dd></div>
+                <div><dt>{{ t('card.bestScore') }}</dt><dd>{{ format(gameStates[game.id]?.best || 0) }}</dd></div>
               </dl>
               <span class="card-play">{{ t(gameStates[game.id]?.moves > 0 ? 'card.continue' : 'card.play') }} <span aria-hidden="true">→</span></span>
             </div>

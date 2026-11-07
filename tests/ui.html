@@ -946,6 +946,9 @@
       await timedSudoku('medium', 60000); await finishTimedSudoku();
       const improvedMedium = JSON.parse(win.localStorage.getItem(keys[10])).medium;
       check('A faster Sudoku finish improves only that level', improvedMedium >= 60000 && improvedMedium < firstMediumBest && JSON.parse(win.localStorage.getItem(keys[10])).easy === separateTimes.easy && JSON.parse(win.localStorage.getItem(keys[10])).hard === separateTimes.hard);
+      win.location.hash = '#/'; await pause();
+      const formatRecord = value => win.formatSudokuTime(value, number => new Intl.NumberFormat(win.ArcadeTranslations.languages.find(item => item.code === doc.documentElement.lang).locale, { useGrouping:false }).format(number));
+      check('Sudoku card immediately shows updated best times after returning from victory', ['easy','medium','hard'].every(level => doc.querySelector(`[data-card-record-level="${level}"] dd`).textContent === formatRecord(JSON.parse(win.localStorage.getItem(keys[10]))[level])));
       await timedSudoku('easy', 10000, sudokuPuzzle); await pause(1250);
       const runningTimeText = doc.querySelector('.sudoku-time strong').textContent;
       sendKey('n'); await pause();
@@ -970,6 +973,19 @@
       win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:sudokuSolution, notes:Array(81).fill(0), difficulty:'medium' }));
       win.location.hash = '#/sudoku'; await pause();
       check('A legacy completed Sudoku is not entered as a zero-time record', !!doc.querySelector('.sudoku-victory') && !JSON.parse(win.localStorage.getItem(keys[10])).medium);
+      win.location.hash = '#/'; await pause();
+      check('Sudoku card shows dashes for levels without a completed time', doc.querySelectorAll('.sudoku-card-times dd').length === 3 && Array.from(doc.querySelectorAll('.sudoku-card-times dd')).every(item => item.textContent === '—'));
+      const menuBestTimes = { easy:65000, medium:3605000, hard:125000 };
+      win.localStorage.setItem(keys[10], JSON.stringify(menuBestTimes));
+      await reload(); doc = frame.contentDocument;
+      for (const code of ['cs','en','de','es','ja','ar']) {
+        doc.querySelector(`[data-language="${code}"]`).click(); await pause();
+        for (const width of [320,390,768,1440]) {
+          frame.style.width = `${width}px`; await pause();
+          const rows = Array.from(doc.querySelectorAll('.sudoku-card-times>div'));
+          check(`Sudoku card restores localized record times without overflow in ${code} at ${width}px`, rows.length === 3 && rows.every((row, index) => { const level = ['easy','medium','hard'][index]; return row.querySelector('dt').textContent === win.ArcadeTranslations[code][`sudoku.${level}`] && row.querySelector('dd').textContent === formatRecord(menuBestTimes[level]) && row.querySelector('dd').getBoundingClientRect().right <= row.getBoundingClientRect().right + 1; }) && doc.documentElement.scrollWidth <= win.innerWidth);
+        }
+      }
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

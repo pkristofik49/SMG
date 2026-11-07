@@ -20,12 +20,7 @@
         const times = JSON.parse(localStorage.getItem(TIMES_KEY));
         for (const level of ['easy', 'medium', 'hard']) if (Number.isSafeInteger(times?.[level]) && times[level] > 0) bestTimes.value[level] = times[level];
       } catch { /* Invalid records start empty. */ }
-      function formatTime(ms) {
-        if (!Number.isFinite(ms)) return '—';
-        const seconds = Math.floor(ms / 1000), pad = value => props.formatTile(value).padStart(2, props.formatTile(0));
-        const hours = Math.floor(seconds / 3600), minutes = Math.floor(seconds / 60) % 60;
-        return (hours ? props.formatTile(hours) + ':' : '') + pad(minutes) + ':' + pad(seconds % 60);
-      }
+      const formatTime = ms => formatSudokuTime(ms, props.formatTile);
       function updateClock() {
         if (!mounted || document.hidden || dialogOpen.value || solved.value) clock.pause(); else clock.start();
         elapsedMs.value = clock.elapsed();
@@ -36,7 +31,7 @@
         elapsedMs.value = clock.elapsed(); lastSavedTime = elapsedMs.value;
         const state = { elapsedMs: Math.round(elapsedMs.value), puzzle: puzzle.value, values: values.value, notes: notes.value, difficulty: difficulty.value };
         try { localStorage.setItem(KEY, JSON.stringify(state)); localStorage.setItem(COMPLETED_KEY, String(completed.value)); localStorage.setItem(TIMES_KEY, JSON.stringify(bestTimes.value)); storageAvailable.value = true; } catch { storageAvailable.value = false; }
-        emit('change', { score: filled.value, best: completed.value, moves: solved.value ? 0 : values.value.filter((value, index) => value && !puzzle.value[index]).length });
+        emit('change', { bestTimes: { ...bestTimes.value }, score: filled.value, best: completed.value, moves: solved.value ? 0 : values.value.filter((value, index) => value && !puzzle.value[index]).length });
       }
       function fresh() {
         const generated = SudokuRules.generate(nextDifficulty.value);

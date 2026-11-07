@@ -51,6 +51,7 @@
       const timerStarted = ref(false);
       let clockInterval;
       const gameStates = ref({});
+      const sudokuBestTimes = ref({});
       const languages = translations.languages;
       const language = ref('cs');
       const languageMenuOpen = ref(false), languagePicker = ref(null), languageMenuButton = ref(null);
@@ -175,6 +176,7 @@
       const format = number => numberFormatter.value.format(number);
       const shortcutTitle = (key, shortcut) => `${t(key)} (${shortcut})`;
       const formatTile = number => tileFormatter.value.format(number);
+      const formatDuration = ms => formatSudokuTime(ms, formatTile);
       function plural(key, count) {
         const selectedKey = `${key}.${pluralRules.value.select(count)}`;
         return t(Object.hasOwn(translations[language.value], selectedKey) ? selectedKey : `${key}.other`, { count: format(count) });
@@ -432,6 +434,9 @@
         }
       }
       function refreshSudoku(summary) {
+        let times = summary?.bestTimes;
+        if (!times) { try { times = JSON.parse(localStorage.getItem('little-arcade.sudoku.best-times')); } catch {} }
+        sudokuBestTimes.value = Object.fromEntries(['easy','medium','hard'].filter(level => Number.isSafeInteger(times?.[level]) && times[level] > 0).map(level => [level, times[level]]));
         if (summary) { gameStates.value.sudoku = summary; return; }
         let state = null, completed = 0;
         try { state = JSON.parse(localStorage.getItem('little-arcade.sudoku.v1')); completed = Number(localStorage.getItem('little-arcade.sudoku.completed')) || 0; } catch {}
@@ -744,7 +749,7 @@
         window.removeEventListener('hashchange', navigate); window.removeEventListener('keydown', onKey);
       });
       function tileClass(value) { return value ? `tile-${Math.min(value, 2048)}` : 'tile-empty'; }
-      return { refreshSudoku, sudokuEffect, boardSize, appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
+      return { sudokuBestTimes, formatDuration, refreshSudoku, sudokuEffect, boardSize, appVersion, appCommit, palettes, palette, paletteMenuOpen, palettePicker, paletteMenuButton, togglePaletteMenu, setPalette, onPalettePickerBlur, enterOptionsMenu, leaveOptionsMenu, cancelOptionsMenuAnimation, guidePanelTop, enterGuide, leaveGuide, cancelGuidePanelAnimation, toggleGuide, guideLeaveStyle, languageMenuOpen, languagePicker, languageMenuButton, toggleLanguageMenu, onLanguagePickerBlur, shortcutTitle, expanded, expandedBoardSize, playPage, toggleExpanded, isSpeedy, remainingMs, timeBudgetMs, timeLabel, timeFraction, games, activeGame, gameStates, formatTile, guideVisible, soundEnabled, audioAvailable, toggleSound, language, languages, setLanguage, t, plural, page, board, score, best, moves, previous, spawned, animating, motionTiles, merged, motionLayer, overlay, overlayTitle, announcement, hasSavedGame,
         storageAvailable, boardElement, dialogPrimary, pointerStart, format, tileClass, move, undo, newGame,
         requestNew, continueGame, dismissOverlay, trapDialogFocus, onBoardKey, onPointerDown, onPointerUp };
     }
