@@ -15,7 +15,7 @@
   }
   frame.addEventListener('load', async () => {
     const win = frame.contentWindow;
-    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound', 'little-arcade.2048-extended.v1', 'little-arcade.2048-extended.best', 'little-arcade.sudoku.v1', 'little-arcade.sudoku.completed'];
+    const keys = ['little-arcade.2048.v1', 'little-arcade.2048.best', 'little-arcade.language', 'little-arcade.palette', 'little-arcade.views', 'little-arcade.sound', 'little-arcade.2048-extended.v1', 'little-arcade.2048-extended.best', 'little-arcade.sudoku.v1', 'little-arcade.sudoku.completed', 'little-arcade.sudoku.best-times'];
     const legacyKeys = ['mala-herna.2048.v1', 'mala-herna.2048.best', 'mala-herna.language'];
     const speedyKeys = ['little-arcade.2048-speedy.v1', 'little-arcade.2048-speedy.best'];
     let originals;
@@ -875,8 +875,9 @@
       check('Sudoku opens with 81 cells and fixed clues', doc.querySelectorAll('.sudoku-cell').length === 81 && doc.querySelectorAll('.sudoku-cell.given').length >= 28 && !doc.querySelector('.board'));
       const sudokuPuzzle = '530070000600195000098000060800060003400803001700020006060000280000419005000080079'.split('').map(Number);
       const sudokuSolution = win.SudokuRules.search(sudokuPuzzle).solution;
+      win.location.hash = '#/'; await pause();
       win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:sudokuPuzzle, notes:Array(81).fill(0), difficulty:'medium' }));
-      await reload(); doc = frame.contentDocument;
+      win.location.hash = '#/sudoku'; await pause(); doc = frame.contentDocument;
       let sudokuCells = doc.querySelectorAll('.sudoku-cell');
       sudokuCells[0].click(); await pause();
       check('Sudoku clues cannot be edited', Array.from(doc.querySelectorAll('.sudoku-digits button')).every(button => button.disabled));
@@ -896,7 +897,7 @@
       sendKey('n'); await pause();
       check('Sudoku N opens restart confirmation', !!doc.querySelector('.sudoku-dialog'));
       doc.querySelector('.sudoku-dialog select').focus(); sendKey('Escape'); await pause();
-      check('Sudoku Escape cancels without changing the puzzle', !doc.querySelector('.sudoku-dialog') && win.localStorage.getItem(keys[8]) === sudokuBeforeCancel);
+      check('Sudoku Escape cancels without changing the puzzle', !doc.querySelector('.sudoku-dialog') && JSON.stringify(JSON.parse(win.localStorage.getItem(keys[8])).values) === JSON.stringify(JSON.parse(sudokuBeforeCancel).values));
       for (const width of [320, 390, 768, 1440]) {
         frame.style.width = `${width}px`; frame.style.height = '900px'; await pause();
         const cells = Array.from(doc.querySelectorAll('.sudoku-cell'), cell => cell.getBoundingClientRect());
@@ -905,14 +906,70 @@
       sendKey('n'); await pause(); doc.querySelector('.sudoku-dialog select').value = 'easy'; doc.querySelector('.sudoku-dialog select').dispatchEvent(new win.Event('change', { bubbles:true })); doc.querySelector('.sudoku-dialog .primary-button').click(); await pause(220);
       check('Sudoku starts a new unique puzzle at the selected difficulty', JSON.parse(win.localStorage.getItem(keys[8])).difficulty === 'easy' && win.SudokuRules.search(JSON.parse(win.localStorage.getItem(keys[8])).puzzle).count === 1);
       const almostSolved = sudokuSolution.slice(); almostSolved[2] = 0;
+      win.location.hash = '#/'; await pause();
       win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:almostSolved, notes:Array(81).fill(0), difficulty:'medium' }));
       const solvedBefore = Number(win.localStorage.getItem(keys[9])) || 0;
-      await reload(); doc = frame.contentDocument; doc.querySelectorAll('.sudoku-cell')[2].click(); await pause(); doc.querySelectorAll('.sudoku-digits button')[3].click(); await pause();
+      win.location.hash = '#/sudoku'; await pause(); doc = frame.contentDocument; doc.querySelectorAll('.sudoku-cell')[2].click(); await pause(); doc.querySelectorAll('.sudoku-digits button')[3].click(); await pause();
       check('Sudoku recognizes completion and increments its own record once', Number(win.localStorage.getItem(keys[9])) === solvedBefore + 1 && doc.querySelectorAll('.sudoku-digits button:disabled').length === 9);
       await reload(); doc = frame.contentDocument;
       check('Reloading completed Sudoku does not increment the record again', Number(win.localStorage.getItem(keys[9])) === solvedBefore + 1);
       win.location.hash = '#/'; await pause();
       check('Sudoku returns to the shared menu and footer', !!doc.querySelector('[data-game="sudoku"]') && doc.querySelector('footer').firstElementChild.textContent === 'SMG');
+      async function timedSudoku(level, elapsedMs, entered = almostSolved) {
+        win.location.hash = '#/'; await pause();
+        win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:entered, notes:Array(81).fill(0), difficulty:level, elapsedMs }));
+        win.location.hash = '#/sudoku'; await pause(); doc = frame.contentDocument;
+      }
+      async function finishTimedSudoku() {
+        doc.querySelectorAll('.sudoku-cell')[2].click(); await pause();
+        doc.querySelectorAll('.sudoku-digits button')[3].click(); await pause();
+      }
+      win.localStorage.removeItem(keys[10]);
+      await timedSudoku('medium', 125000); await finishTimedSudoku();
+      const firstMediumBest = JSON.parse(win.localStorage.getItem(keys[10])).medium;
+      check('Sudoku victory dialog congratulates the player and shows a new record', !!doc.querySelector('.sudoku-victory') && doc.querySelector('.sudoku-victory h2').textContent === win.ArcadeTranslations[doc.documentElement.lang]['sudoku.victoryTitle'] && !!doc.querySelector('.sudoku-new-record') && doc.querySelector('.sudoku-board').inert);
+      check('Sudoku stores elapsed completion time for the selected difficulty', firstMediumBest >= 125000 && firstMediumBest < 127000 && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === firstMediumBest);
+      const victoryClock = doc.querySelector('.sudoku-time strong').textContent;
+      await pause(1250);
+      check('Sudoku clock stops at victory', doc.querySelector('.sudoku-time strong').textContent === victoryClock && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === firstMediumBest);
+      await reload(); doc = frame.contentDocument;
+      check('Victory and its elapsed time survive reload without replacing the record', !!doc.querySelector('.sudoku-victory') && JSON.parse(win.localStorage.getItem(keys[10])).medium === firstMediumBest && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === firstMediumBest);
+      doc.querySelector('.sudoku-victory select').value = 'hard'; doc.querySelector('.sudoku-victory select').dispatchEvent(new win.Event('change', { bubbles:true }));
+      doc.querySelector('.sudoku-victory .primary-button').click(); await pause();
+      check('Victory offers a fresh puzzle with chosen difficulty and reset timer', !doc.querySelector('.sudoku-dialog') && JSON.parse(win.localStorage.getItem(keys[8])).difficulty === 'hard' && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs < 1000 && JSON.parse(win.localStorage.getItem(keys[10])).medium === firstMediumBest);
+      await timedSudoku('easy', 300000); await finishTimedSudoku();
+      await timedSudoku('hard', 180000); await finishTimedSudoku();
+      const separateTimes = JSON.parse(win.localStorage.getItem(keys[10]));
+      check('Sudoku stores independent best times for all three levels', separateTimes.easy >= 300000 && separateTimes.hard >= 180000 && separateTimes.medium === firstMediumBest && doc.querySelectorAll('[data-record-level]').length === 3);
+      await timedSudoku('medium', 250000); await finishTimedSudoku();
+      check('A slower Sudoku finish preserves the best time', JSON.parse(win.localStorage.getItem(keys[10])).medium === firstMediumBest && !doc.querySelector('.sudoku-new-record'));
+      await timedSudoku('medium', 60000); await finishTimedSudoku();
+      const improvedMedium = JSON.parse(win.localStorage.getItem(keys[10])).medium;
+      check('A faster Sudoku finish improves only that level', improvedMedium >= 60000 && improvedMedium < firstMediumBest && JSON.parse(win.localStorage.getItem(keys[10])).easy === separateTimes.easy && JSON.parse(win.localStorage.getItem(keys[10])).hard === separateTimes.hard);
+      await timedSudoku('easy', 10000, sudokuPuzzle); await pause(1250);
+      const runningTimeText = doc.querySelector('.sudoku-time strong').textContent;
+      sendKey('n'); await pause();
+      const sudokuPausedTime = JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs;
+      await pause(1250);
+      check('Sudoku counts active solving and pauses for restart confirmation', sudokuPausedTime >= 11250 && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === sudokuPausedTime && doc.querySelector('.sudoku-time strong').textContent === runningTimeText);
+      sendKey('Escape'); await pause(1250);
+      win.location.hash = '#/'; await pause();
+      const sudokuMenuTime = JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs;
+      await pause(1250);
+      check('Sudoku resumes after cancellation and stops counting in the menu', sudokuMenuTime >= sudokuPausedTime + 1200 && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === sudokuMenuTime);
+      win.location.hash = '#/sudoku'; await pause();
+      check('Sudoku restores accumulated solving time after returning from menu', JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs >= sudokuMenuTime && JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs < sudokuMenuTime + 1000);
+      Object.defineProperty(doc, 'hidden', { configurable:true, value:true }); doc.dispatchEvent(new win.Event('visibilitychange'));
+      const hiddenTime = JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs;
+      await pause(1250);
+      check('Hidden Sudoku does not count time', JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs === hiddenTime);
+      delete doc.hidden; doc.dispatchEvent(new win.Event('visibilitychange')); await pause(1250);
+      win.location.hash = '#/'; await pause();
+      check('Visible Sudoku resumes its solving clock', JSON.parse(win.localStorage.getItem(keys[8])).elapsedMs >= hiddenTime + 1200);
+      win.localStorage.removeItem(keys[10]);
+      win.localStorage.setItem(keys[8], JSON.stringify({ puzzle:sudokuPuzzle, values:sudokuSolution, notes:Array(81).fill(0), difficulty:'medium' }));
+      win.location.hash = '#/sudoku'; await pause();
+      check('A legacy completed Sudoku is not entered as a zero-time record', !!doc.querySelector('.sudoku-victory') && !JSON.parse(win.localStorage.getItem(keys[10])).medium);
     } catch (error) { failures++; lines.push(`FAIL ${error.stack}`); }
     finally {
       win.location.hash = '#/'; await pause();

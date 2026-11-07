@@ -17,6 +17,12 @@
       { code: 'ar', short: 'AR', name: 'العربية', locale: 'ar-EG-u-nu-arab', direction: 'rtl' }
     ],
     cs: {
+      "sudoku.time": "Čas",
+      "sudoku.bestTimes": "Nejlepší časy",
+      "sudoku.victoryTitle": "Sudoku vyřešeno!",
+      "sudoku.victoryTime": "Vyřešeno za {time}.",
+      "sudoku.newRecord": "Nový rekord této obtížnosti!",
+      "sudoku.viewBoard": "Zobrazit řešení",
       "sudoku.description": "Vyplňte devět řádků, sloupců a bloků",
       "sudoku.goal": "Každé číslo od 1 do 9 právě jednou.",
       "sudoku.filled": "Vyplněno",
@@ -153,6 +159,12 @@
       'footer.note': 'Bez spěchu. Jen další dobrý tah.'
     },
     en: {
+      "sudoku.time": "Time",
+      "sudoku.bestTimes": "Best times",
+      "sudoku.victoryTitle": "Sudoku solved!",
+      "sudoku.victoryTime": "Solved in {time}.",
+      "sudoku.newRecord": "New record for this difficulty!",
+      "sudoku.viewBoard": "View completed board",
       "sudoku.description": "Fill nine rows, columns and boxes",
       "sudoku.goal": "Each number from 1 to 9 exactly once.",
       "sudoku.filled": "Filled",
@@ -289,6 +301,12 @@
       'footer.note': 'No rush. Just one more good move.'
     },
     de: {
+      "sudoku.time": "Zeit",
+      "sudoku.bestTimes": "Bestzeiten",
+      "sudoku.victoryTitle": "Sudoku gelöst!",
+      "sudoku.victoryTime": "Gelöst in {time}.",
+      "sudoku.newRecord": "Neue Bestzeit für diese Schwierigkeit!",
+      "sudoku.viewBoard": "Gelöstes Rätsel ansehen",
       "sudoku.description": "Fülle neun Zeilen, Spalten und Blöcke",
       "sudoku.goal": "Jede Zahl von 1 bis 9 genau einmal.",
       "sudoku.filled": "Ausgefüllt",
@@ -425,6 +443,12 @@
       'footer.note': 'Keine Eile. Nur noch ein guter Zug.'
     },
     es: {
+      "sudoku.time": "Tiempo",
+      "sudoku.bestTimes": "Mejores tiempos",
+      "sudoku.victoryTitle": "¡Sudoku resuelto!",
+      "sudoku.victoryTime": "Resuelto en {time}.",
+      "sudoku.newRecord": "¡Nuevo récord en esta dificultad!",
+      "sudoku.viewBoard": "Ver tablero resuelto",
       "sudoku.description": "Completa nueve filas, columnas y bloques",
       "sudoku.goal": "Cada número del 1 al 9 una sola vez.",
       "sudoku.filled": "Casillas llenas",
@@ -561,6 +585,12 @@
       'footer.note': 'Sin prisa. Solo una buena jugada más.'
     },
     ja: {
+      "sudoku.time": "時間",
+      "sudoku.bestTimes": "ベストタイム",
+      "sudoku.victoryTitle": "数独クリア！",
+      "sudoku.victoryTime": "クリアタイム：{time}",
+      "sudoku.newRecord": "この難易度の新記録！",
+      "sudoku.viewBoard": "完成した盤面を見る",
       "sudoku.description": "9つの行・列・ブロックを埋めよう",
       "sudoku.goal": "1から9をそれぞれ1回ずつ。",
       "sudoku.filled": "入力済み",
@@ -697,6 +727,12 @@
       'footer.note': '焦らず、次のいい一手を。'
     },
     ar: {
+      "sudoku.time": "الوقت",
+      "sudoku.bestTimes": "أفضل الأوقات",
+      "sudoku.victoryTitle": "تم حل سودوكو!",
+      "sudoku.victoryTime": "تم الحل خلال {time}.",
+      "sudoku.newRecord": "رقم قياسي جديد لهذه الصعوبة!",
+      "sudoku.viewBoard": "عرض اللوحة المكتملة",
       "sudoku.description": "أكمل تسعة صفوف وأعمدة ومربعات",
       "sudoku.goal": "كل رقم من ١ إلى ٩ مرة واحدة فقط.",
       "sudoku.filled": "المملوءة",

@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sudoku tests</title></head><body><pre id="results"></pre><script src="../js/sudoku.js"></script><script>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Sudoku tests</title></head><body><pre id="results"></pre><script src="../js/sudoku.js"></script><script src="../js/sudoku-clock.js"></script><script>
 'use strict';
 const lines = []; let failures = 0;
 function test(name, run) { try { run(); lines.push('PASS ' + name); } catch (error) { failures++; lines.push('FAIL ' + name + ': ' + error.message); } }
@@ -13,5 +13,9 @@ for (const difficulty of ['easy','medium','hard']) test('Generated ' + difficult
 });
 test('Saved state validates clues, notes and difficulty', () => { const state = { puzzle, values: puzzle.slice(), notes: Array(81).fill(0), difficulty:'medium' }; assert(SudokuRules.validState(state)); assert(!SudokuRules.validState({ ...state, difficulty:'invalid' })); const values = puzzle.slice(); values[0] = 1; assert(!SudokuRules.validState({ ...state, values })); assert(!SudokuRules.validState({ ...state, notes: Array(81).fill(512) })); });
 test('All peer sets contain exactly twenty other cells', () => assert(SudokuRules.peers.every((peers, index) => peers.length === 20 && !peers.includes(index))));
+test('Solving clock accumulates only active intervals', () => { let time = 100; const clock = createSudokuClock(() => time); clock.start(); time += 1250; assert(clock.elapsed() === 1250); assert(clock.pause() === 1250); time += 50000; assert(clock.elapsed() === 1250); clock.start(); time += 750; assert(clock.pause() === 2000); });
+test('Solving clock restores saved time without counting closed time', () => { let time = 90000; const clock = createSudokuClock(() => time); clock.reset(65000); time += 100000; assert(clock.elapsed() === 65000); clock.start(); time += 1200; assert(clock.elapsed() === 66200); });
+test('Repeated start and pause do not double-count time', () => { let time = 0; const clock = createSudokuClock(() => time); clock.start(); time = 200; clock.start(); time = 500; assert(clock.pause() === 500); assert(clock.pause() === 500); assert(!clock.isRunning()); });
+test('New puzzle resets the solving clock', () => { let time = 100; const clock = createSudokuClock(() => time); clock.reset(60000); clock.start(); time += 1500; clock.reset(); assert(clock.elapsed() === 0 && !clock.isRunning()); clock.reset(-1); assert(clock.elapsed() === 0); });
 lines.push('\nFailures: ' + failures); document.getElementById('results').textContent = lines.join('\n'); document.title = failures ? 'FAIL Sudoku' : 'PASS Sudoku';
 </script></body></html>
